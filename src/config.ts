@@ -2,6 +2,8 @@ export interface BotConfig {
   discordToken: string;
   discordClientId: string;
   discordGuildId?: string;
+  officeTextChannelId: string;
+  officeVoiceChannelId: string;
   database: { host: string; port: number; database: string; user: string; password: string };
   healthFile: string;
 }
@@ -18,6 +20,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): BotConfig {
     discordToken: required(env, 'DISCORD_TOKEN'),
     discordClientId: required(env, 'DISCORD_CLIENT_ID'),
     ...(discordGuildId ? { discordGuildId } : {}),
+    officeTextChannelId: required(env, 'OFFICE_TEXT_CHANNEL_ID'),
+    officeVoiceChannelId: required(env, 'OFFICE_VOICE_CHANNEL_ID'),
     database: {
       host: required(env, 'DB_HOST'),
       port: Number.parseInt(env.DB_PORT || '3306', 10),

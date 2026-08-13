@@ -4,10 +4,11 @@ import { Client, Events, GatewayIntentBits } from 'discord.js';
 import { registerCommands } from './commands.js';
 import { loadConfig } from './config.js';
 import { connectDatabase } from './database.js';
+import { isConfiguredVoiceChannel, isOfficeGreeting, officeGreetingReply } from './office-greeting.js';
 
 const config = loadConfig();
 const database = await connectDatabase(config.database);
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
 const instanceId = randomUUID();
 let heartbeat: NodeJS.Timeout | undefined;
 
@@ -32,6 +33,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isChatInputCommand() || interaction.commandName !== 'ping') return;
   await interaction.reply('Pong!');
 });
+
+client.on(Events.MessageCreate, (message) => void (async () => {
+  if (message.author.bot || !message.inGuild() || !isOfficeGreeting(message.content)) return;
+  const member = message.member ?? await message.guild.members.fetch(message.author.id);
+  const voiceChannel = await client.channels.fetch(config.officeVoiceChannelId);
+  if (!voiceChannel || !isConfiguredVoiceChannel(voiceChannel, config.officeVoiceChannelId)) throw new Error(`OFFICE_VOICE_CHANNEL_ID ${config.officeVoiceChannelId} is not a guild voice channel`);
+  await message.reply(officeGreetingReply(member, voiceChannel, config.officeTextChannelId));
+})().catch((error: unknown) => console.error('Office greeting handler failed', error)));
 
 async function shutdown(signal: string): Promise<void> {
   console.info(`Received ${signal}, shutting down`);

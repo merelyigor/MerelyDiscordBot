@@ -4,7 +4,7 @@ import { loadConfig } from '../src/config.js';
 
 const validEnv = {
   DISCORD_TOKEN: 'token', DISCORD_CLIENT_ID: 'client', DB_HOST: 'database',
-  DB_DATABASE: 'bot', DB_USERNAME: 'bot', DB_PASSWORD: 'password',
+  DB_DATABASE: 'bot', DB_USERNAME: 'bot', DB_PASSWORD: 'password', OFFICE_TEXT_CHANNEL_ID: 'text', OFFICE_VOICE_CHANNEL_ID: 'voice',
 };
 
 test('loads required configuration', () => {
