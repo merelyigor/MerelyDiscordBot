@@ -31,6 +31,7 @@
 5. Зроби найменшу цілісну зміну; спочатку один приклад або focused test.
 6. Для поведінкового бага додай regression test і запусти профіль категорії.
 7. Переглянь diff на secrets, generated files, `tmp-*`, scope drift і чужі правки.
+8. Для генерації commit message прочитай і застосуй [`docs/COMMIT-MESSAGE-PROMPT.md`](docs/COMMIT-MESSAGE-PROMPT.md) (§13.4).
 
 ## 4. Маршрутизація
 

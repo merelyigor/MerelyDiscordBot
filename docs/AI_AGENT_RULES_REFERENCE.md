@@ -91,6 +91,7 @@
 - §13.1 Commit, push, tag, rebase, force або history rewrite - лише за разовим явним дозволом.
 - §13.2 Не змішувати rule change, application refactor та unrelated infra changes в одному commit.
 - §13.3 Не видаляти files/data та не виконувати destructive DB commands без дозволу.
+- §13.4 Перед генерацією commit message прочитати [`COMMIT-MESSAGE-PROMPT.md`](COMMIT-MESSAGE-PROMPT.md) і точно виконати його формат, version rules та обмеження.
 
 ## §14 Коли питати підтвердження
 - §14.1 `DROP`, `TRUNCATE`, destructive migration, rollback/reset або очищення test DB.
