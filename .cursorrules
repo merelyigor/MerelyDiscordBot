@@ -70,6 +70,7 @@ bash scripts/agent-check.sh full
 - `src/index.ts` - transport/orchestration; config, commands і persistence ізольовані (§6, §17).
 - Лише `GatewayIntentBits.Guilds`; новий intent потребує доведеної функціональної потреби (§17.1).
 - `Message Content Intent` увімкнено; він необхідний для office greeting та slash command options (§17.7).
+- `Server Members Intent` (`GatewayIntentBits.GuildMembers`) увімкнено; він необхідний для резолву `#нікнейм` у mention-правилах (§17.1).
 - Guild commands використовують `DISCORD_GUILD_ID`; без нього commands global (§17.2).
 - Health heartbeat починається лише після `ClientReady`; SIGINT/SIGTERM закривають client і pool (§17).
 - `bot_runtime` - operational data; schema changes additive/idempotent, SQL inputs через placeholders (§18).

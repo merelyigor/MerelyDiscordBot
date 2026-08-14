@@ -7,11 +7,11 @@ import { registerCommands } from './commands.js';
 import { loadConfig } from './config.js';
 import { connectDatabase } from './database.js';
 import { getRandomMotivation } from './motivation.js';
-import { matchRules, resolveChannels, type ChannelPair } from './rules.js';
+import { extractMentionTarget, formatMentionReply, matchRules, resolveChannels, type ChannelPair, type MentionTarget } from './rules.js';
 
 const config = loadConfig();
 const database = await connectDatabase(config.database);
-const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMembers] });
 const instanceId = randomUUID();
 let heartbeat: NodeJS.Timeout | undefined;
 
@@ -51,6 +51,15 @@ async function resolveChannelPair(channelPair: ChannelPair, member: GuildMember,
   return pickChannelId(channelPair, canAccessChannel(channel, member));
 }
 
+async function resolveMentionTarget(target: MentionTarget, member: GuildMember): Promise<string | null> {
+  if (target.kind === 'user') return target.value;
+  const name = target.value.toLocaleLowerCase('uk-UA');
+  const found = member.guild.members.cache.find(
+    (m) => m.displayName.toLocaleLowerCase('uk-UA') === name || m.user.username.toLocaleLowerCase('uk-UA') === name,
+  );
+  return found ? found.id : null;
+}
+
 client.on(Events.MessageCreate, (message) => void (async () => {
   if (message.author.bot || !message.inGuild()) return;
   console.info(`[debug] MessageCreate received: channel=${message.channelId} contentLen=${message.content.length}`);
@@ -62,7 +71,16 @@ client.on(Events.MessageCreate, (message) => void (async () => {
   for (const [key, pair] of Object.entries(rule.channels ?? {})) {
     channelIds[key] = await resolveChannelPair(pair, member, client);
   }
-  await message.reply(resolveChannels(rule.response, channelIds));
+  const response = resolveChannels(rule.response, channelIds);
+  if (rule.type === 'mention') {
+    const target = extractMentionTarget(message.content);
+    const targetId = target ? await resolveMentionTarget(target, member) : null;
+    if (targetId) {
+      await message.channel.send(formatMentionReply(`<@${targetId}>`, response));
+      return;
+    }
+  }
+  await message.reply(response);
 })().catch((error: unknown) => console.error('Message rule handler failed', error)));
 
 async function shutdown(signal: string): Promise<void> {

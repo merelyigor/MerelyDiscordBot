@@ -134,14 +134,13 @@
 - §16.10 Проєкт не має домену, Nginx config, HTTP port або public page.
 
 ## §17 Discord Runtime
-- §17.1 Базовий Gateway intent - лише `GatewayIntentBits.Guilds`; новий intent потребує use case і review.
+- §17.1 Базовий Gateway intent - лише `GatewayIntentBits.Guilds`; новий intent потребує use case і review. `GatewayIntentBits.GuildMembers` увімкнено для резолву `#нікнейм` у `mention`-правилах; `GatewayIntentBits.GuildMessages` і `GatewayIntentBits.MessageContent` увімкнено для обробки message content.
 - §17.2 Guild command registration використовується з `DISCORD_GUILD_ID`, global - без нього.
 - §17.3 Commands мають bounded execution, explicit reply/defer і user-safe error handling.
 - §17.4 `SIGINT`/`SIGTERM` закривають heartbeat, Discord client і DB pool.
 - §17.5 Heartbeat health починається тільки після `Events.ClientReady`.
 - §17.6 Не логувати message content, interaction payload або member data без operational need.
 - §17.7 `Message Content Intent` увімкнено в Discord Developer Portal; він необхідний для office greeting (читання message content) та slash command options.
-
 ## §18 MariaDB Persistence
 - §18.1 Schema changes additive й idempotent за замовчуванням; destructive evolution має migration plan.
 - §18.2 Runtime bootstrap не є recovery mechanism для складної schema evolution.

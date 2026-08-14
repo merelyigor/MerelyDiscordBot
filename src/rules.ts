@@ -9,7 +9,7 @@ export interface ChannelPair {
 
 export interface Rule {
   pattern: string;
-  type: 'text' | 'regex';
+  type: 'text' | 'regex' | 'mention';
   response: string;
   id?: string;
   channels?: Record<string, ChannelPair>;
@@ -29,7 +29,6 @@ function buildRegExp(rule: Rule): RegExp {
   const escaped = rule.pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return new RegExp(`(?:^|[^\\p{L}\\p{N}])${escaped}(?=[^\\p{L}\\p{N}]|$)`, 'iu');
 }
-
 export function matchRules(content: string): MatchResult | null {
   for (const rule of rules) {
     const re = buildRegExp(rule);
@@ -48,4 +47,23 @@ export function resolveChannels(response: string, channelIds: Record<string, str
     const id = channelIds[key];
     return id ? `<#${id}>` : `{${key}}`;
   });
+}
+
+export interface MentionTarget {
+  kind: 'user' | 'nickname';
+  value: string;
+}
+
+export function extractMentionTarget(content: string): MentionTarget | null {
+  const userMatch = content.match(/<@!?(\d+)>/);
+  const userId = userMatch?.[1];
+  if (userId) return { kind: 'user', value: userId };
+  const nicknameMatch = content.match(/(?:^|[\s.,!?])[#@]([^\s#@<]+)/);
+  const nickname = nicknameMatch?.[1];
+  if (nickname) return { kind: 'nickname', value: nickname };
+  return null;
+}
+
+export function formatMentionReply(mention: string, response: string): string {
+  return `${mention} ${response}`;
 }

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { getRules, matchRules, resolveChannels } from '../src/rules.js';
+import { extractMentionTarget, formatMentionReply, getRules, matchRules, resolveChannels } from '../src/rules.js';
 
 test('rules.json contains the office rule with channel pair', () => {
   const rules = getRules();
@@ -43,4 +43,25 @@ test('non-matching content returns null', () => {
   assert.equal(matchRules('привіт усім'), null);
   assert.equal(matchRules(''), null);
   assert.equal(matchRules('піськарня'), null);
+});
+
+test('extractMentionTarget finds user mention in content', () => {
+  assert.deepEqual(extractMentionTarget('Бобер 67 <@1234567890>'), { kind: 'user', value: '1234567890' });
+  assert.deepEqual(extractMentionTarget('привіт <@!9876543210> йдеш?'), { kind: 'user', value: '9876543210' });
+});
+
+test('extractMentionTarget finds nickname in content', () => {
+  assert.deepEqual(extractMentionTarget('Бобер 67 #Іван'), { kind: 'nickname', value: 'Іван' });
+  assert.deepEqual(extractMentionTarget('#Іван Бобер 67'), { kind: 'nickname', value: 'Іван' });
+  assert.deepEqual(extractMentionTarget('@Іван Бобер 67'), { kind: 'nickname', value: 'Іван' });
+  assert.deepEqual(extractMentionTarget('Бобер 67 #шлях-до-офісу'), { kind: 'nickname', value: 'шлях-до-офісу' });
+});
+
+test('extractMentionTarget returns null when no mention present', () => {
+  assert.equal(extractMentionTarget('Бобер 67'), null);
+  assert.equal(extractMentionTarget(''), null);
+});
+
+test('formatMentionReply prefixes response with mention and space', () => {
+  assert.equal(formatMentionReply('<@1234567890>', 'Працюй, паскуда'), '<@1234567890> Працюй, паскуда');
 });

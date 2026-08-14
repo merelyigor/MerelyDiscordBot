@@ -34,7 +34,8 @@ npm run build
 Конфігурація оточення постачається з `merely-server-infra`; не комітити Discord- або
 database-credentials.
 
-Для читання вмісту повідомлень потрібен `Message Content Intent` у Discord Developer Portal.
+Для читання вмісту повідомлень потрібен `Message Content Intent`, а для резолву `#нікнейм`
+у `mention`-правилах — `Server Members Intent` у Discord Developer Portal.
 Правило office greeting у `src/data/rules.json` посилається на голосовий канал, якщо автор може
 його переглядати та приєднуватися, інакше — на публічний текстовий канал (див. мапу `channels`
 цього правила).
