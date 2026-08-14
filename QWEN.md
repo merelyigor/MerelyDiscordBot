@@ -17,6 +17,10 @@
 
 - `git commit`, `git push`, force/rebase/tag - лише після разового явного дозволу (§13.1).
 - Production read-only за замовчуванням; шлях змін: local -> checks -> commit -> infra deploy (§10).
+- Local Discord runtime запускається лише на час потрібної перевірки та після неї не вважається постійним сервісом.
+- Production Discord runtime після штатного deploy має працювати постійно; зупинка або unhealthy state є production-інцидентом, крім погодженого maintenance.
+- Статус local Docker ніколи не є доказом статусу production; у кожному звіті явно вказувати environment і джерело runtime-доказу (§10, §11).
+- Локальний запуск боа: з `www/MerelyDiscordBot/docker/` виконати `set -a && source merely-server-infra/.env && set +a`, потім `docker compose --profile local up -d --build`; зупинка: `docker compose --profile local down` (§10.10).
 - `DROP`, `TRUNCATE`, destructive migrations і очищення робочої/test БД - лише після дозволу (§14.1).
 - Не читати, не логувати й не комітити Discord token, DB password, prod env або dumps (§9).
 - `.env` не редагувати як source; canonical runtime ENV - infra `docker/.env.local` і `.env.prod` (§8).
@@ -29,7 +33,8 @@
 3. Перевір implementation, усі call sites, `package-lock.json`, config і тести.
 4. Прочитай лише потрібні секції з таблиці нижче.
 5. Зроби найменшу цілісну зміну; спочатку один приклад або focused test.
-6. Для поведінкового бага додай regression test і запусти профіль категорії.
+6. Для поведінкового бага додай regression test і запусти профіль категорії (§11.1).
+7. Зміна behavior (feature, bug fix, refactor зі зміною contract) завжди додає або оновлює unit test у `tests/`; видалення модуля/функції переносить покриття на нову реалізацію, а не втрачає його (§11.10).
 7. Переглянь diff на secrets, generated files, `tmp-*`, scope drift і чужі правки.
 8. Для генерації commit message прочитай і застосуй [`docs/COMMIT-MESSAGE-PROMPT.md`](docs/COMMIT-MESSAGE-PROMPT.md) (§13.4).
 
@@ -63,6 +68,7 @@ bash scripts/agent-check.sh full
 - Стек: Node.js >=22.12, TypeScript strict, discord.js, mysql2/MariaDB, Docker worker.
 - `src/index.ts` - transport/orchestration; config, commands і persistence ізольовані (§6, §17).
 - Лише `GatewayIntentBits.Guilds`; новий intent потребує доведеної функціональної потреби (§17.1).
+- `Message Content Intent` увімкнено; він необхідний для office greeting та slash command options (§17.7).
 - Guild commands використовують `DISCORD_GUILD_ID`; без нього commands global (§17.2).
 - Health heartbeat починається лише після `ClientReady`; SIGINT/SIGTERM закривають client і pool (§17).
 - `bot_runtime` - operational data; schema changes additive/idempotent, SQL inputs через placeholders (§18).

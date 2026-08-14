@@ -1,10 +1,13 @@
+// noinspection SqlNoDataSourceInspection
 import { randomUUID } from 'node:crypto';
 import { writeFile } from 'node:fs/promises';
-import { Client, Events, GatewayIntentBits } from 'discord.js';
+import { ChannelType, Client, Events, GatewayIntentBits, type GuildMember } from 'discord.js';
+import { canAccessChannel, pickChannelId } from './channels.js';
 import { registerCommands } from './commands.js';
 import { loadConfig } from './config.js';
 import { connectDatabase } from './database.js';
-import { isConfiguredVoiceChannel, isOfficeGreeting, officeGreetingReply } from './office-greeting.js';
+import { getRandomMotivation } from './motivation.js';
+import { matchRules, resolveChannels, type ChannelPair } from './rules.js';
 
 const config = loadConfig();
 const database = await connectDatabase(config.database);
@@ -29,18 +32,38 @@ client.once(Events.ClientReady, async (readyClient) => {
   console.info(`Discord bot ready as ${readyClient.user.tag}`);
 });
 
-client.on(Events.InteractionCreate, async (interaction) => {
-  if (!interaction.isChatInputCommand() || interaction.commandName !== 'ping') return;
-  await interaction.reply('Pong!');
-});
+client.on(Events.InteractionCreate, (interaction) => void (async () => {
+  if (!interaction.isChatInputCommand()) return;
+  if (interaction.commandName === 'ping') {
+    await interaction.reply('Pong!');
+    return;
+  }
+  if (interaction.commandName === 'motivation') {
+    const target = interaction.options.getUser('user', true);
+    const motivation = getRandomMotivation();
+    await interaction.reply(`> ${motivation.quote}\n— *${motivation.author}*\n<@${target.id}>`);
+  }
+})().catch((error: unknown) => console.error('Interaction handler failed', error)));
+
+async function resolveChannelPair(channelPair: ChannelPair, member: GuildMember, client: Client): Promise<string> {
+  const channel = await client.channels.fetch(channelPair.private);
+  if (!channel || channel.type === ChannelType.DM || channel.type === ChannelType.GroupDM || !('permissionsFor' in channel)) return channelPair.public;
+  return pickChannelId(channelPair, canAccessChannel(channel, member));
+}
 
 client.on(Events.MessageCreate, (message) => void (async () => {
-  if (message.author.bot || !message.inGuild() || !isOfficeGreeting(message.content)) return;
+  if (message.author.bot || !message.inGuild()) return;
+  console.info(`[debug] MessageCreate received: channel=${message.channelId} contentLen=${message.content.length}`);
+  const matched = matchRules(message.content);
+  if (!matched) return;
+  const { rule } = matched;
   const member = message.member ?? await message.guild.members.fetch(message.author.id);
-  const voiceChannel = await client.channels.fetch(config.officeVoiceChannelId);
-  if (!voiceChannel || !isConfiguredVoiceChannel(voiceChannel, config.officeVoiceChannelId)) throw new Error(`OFFICE_VOICE_CHANNEL_ID ${config.officeVoiceChannelId} is not a guild voice channel`);
-  await message.reply(officeGreetingReply(member, voiceChannel, config.officeTextChannelId));
-})().catch((error: unknown) => console.error('Office greeting handler failed', error)));
+  const channelIds: Record<string, string> = {};
+  for (const [key, pair] of Object.entries(rule.channels ?? {})) {
+    channelIds[key] = await resolveChannelPair(pair, member, client);
+  }
+  await message.reply(resolveChannels(rule.response, channelIds));
+})().catch((error: unknown) => console.error('Message rule handler failed', error)));
 
 async function shutdown(signal: string): Promise<void> {
   console.info(`Received ${signal}, shutting down`);

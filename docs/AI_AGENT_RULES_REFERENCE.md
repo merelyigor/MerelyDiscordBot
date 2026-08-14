@@ -17,6 +17,7 @@
 - §3.1 Відповідати власнику українською, коротко й фактологічно.
 - §3.2 Код, identifiers, logs та error messages не перекладати.
 - §3.3 Припущення, ризики, blockers і невиконані checks позначати явно.
+- §3.4 Вся документація проєкту (README, docs/, guides) ведеться українською; англійська — лише для термінології, назв команд/файлів/ENV, code identifiers та посилань.
 
 ## §4 Базовий режим роботи
 - §4.1 Спочатку факти з коду, call sites, lock-файла, config і tests, потім зміни.
@@ -73,6 +74,17 @@
 - §10.2 Шлях змін: local checks -> commit -> штатний merely-server-infra deploy.
 - §10.3 Direct SSH edits, file copy, manual migration або restart production заборонені без дозволу.
 - §10.4 Local і production Discord instances не використовують один token одночасно.
+- §10.5 Local Discord runtime є on-demand test runtime: запускати лише для потрібної перевірки та не трактувати його як постійний сервіс.
+- §10.6 Production Discord runtime після штатного deploy має бути continuously available; зупинка або unhealthy state допустимі лише під час погодженого maintenance.
+- §10.7 Local і production мають бути розділені за token, guild, ENV і джерелом конфігурації; production credentials не використовуються для local smoke.
+- §10.8 Runtime claim завжди має називати environment і evidence source; local Docker status не підтверджує production status.
+- §10.9 Production availability перевіряється лише production evidence: infra/container status, healthcheck, ready log і Discord smoke; за відсутності доступу статус позначати unavailable.
+- §10.10 Локальний запуск боа:
+  1. З `www/MerelyDiscordBot/docker/`: `set -a && source merely-server-infra/.env && set +a`
+  2. `docker compose --profile local up -d --build`
+  Зупинка: `docker compose --profile local down`.
+  Скрипт `deploy-single-project.sh` не підходить для локального запуску (`.env.local` має `PROJECT_DEPLOY_ENABLED=false`).
+- §10.11 Перевірка статусу локального боа: `docker ps --filter "name=MerelyDiscordBot-bot"` та `docker logs MerelyDiscordBot-bot --tail 50`.
 
 ## §11 Verification
 - §11.1 Порядок: один real example -> focused test -> category profile -> full gate.
@@ -81,6 +93,10 @@
 - §11.4 Discord runtime smoke потребує test token/guild; без них check позначається unavailable.
 - §11.5 DB change перевіряє additive/idempotent schema та isolated integration test, якщо він існує.
 - §11.6 SEO завжди `N/A`: worker не має public pages, URL або crawlable output.
+- §11.7 Local smoke після перевірки має завершуватися зупинкою local runtime; це не є deploy і не змінює production.
+- §11.8 Production deploy verification повинна окремо підтвердити container status, healthcheck, `ClientReady`/ready log і реальну Discord interaction; unit tests цього не замінюють.
+- §11.9 Якщо перевірено лише код або local runtime, не заявляти, що production functionality працює.
+- §11.10 `npm test` виконується завжди (в `backend`/`full` gate) і без exit code 0 задача не вважається завершеною. Будь-яка зміна behavior (feature, bug fix, refactor зі зміною contract) обов'язково додає або оновлює unit test у `tests/`; видалення модуля/функції переносить його покриття на нову реалізацію замість видалення тесту.
 
 ## §12 Документація
 - §12.1 Commands, ENV contract, permissions, schema або deploy behavior синхронізуються з README.
@@ -124,6 +140,7 @@
 - §17.4 `SIGINT`/`SIGTERM` закривають heartbeat, Discord client і DB pool.
 - §17.5 Heartbeat health починається тільки після `Events.ClientReady`.
 - §17.6 Не логувати message content, interaction payload або member data без operational need.
+- §17.7 `Message Content Intent` увімкнено в Discord Developer Portal; він необхідний для office greeting (читання message content) та slash command options.
 
 ## §18 MariaDB Persistence
 - §18.1 Schema changes additive й idempotent за замовчуванням; destructive evolution має migration plan.
@@ -139,6 +156,8 @@
 - §19.3 Після Docker change: Compose config, image build, entrypoint check і runtime health за credentials.
 - §19.4 Deploy виконує `scripts/deploy-single-project.sh MerelyDiscordBot {local|prod}` з infra repo.
 - §19.5 Worker deploy не торкається Nginx, Cloudflare, uploads або HTTP availability monitoring.
+- §19.6 Compose `local` і `prod` є різними operational environments; профіль запуску та ENV source фіксуються у verification report.
+- §19.7 `restart: unless-stopped` і container healthcheck є availability mechanisms, але самі по собі не доводять Discord login, permissions або command/message behavior.
 
 ## §20 Quality Gate та Rules
 - §20.1 Єдина project check entrypoint - `scripts/agent-check.sh`.

@@ -1,0 +1,19 @@
+[
+  {
+    "pattern": "всім\\s+офіснікам\\s+хай",
+    "type": "regex",
+    "response": "всі офісніки в Дніпрі чілять і пукають в Дніпровському офісі💼 {office-chanel}",
+    "id": "office-chanel",
+    "channels": {
+      "office-chanel": {
+        "public": "1533165578867572836",
+        "private": "1533165008484171986"
+      }
+    }
+  },
+  {
+    "pattern": "піська",
+    "type": "text",
+    "response": "Отваліська!"
+  }
+]
