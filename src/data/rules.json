@@ -17,6 +17,11 @@
     "response": "Отваліська!"
   },
   {
+    "pattern": "!merely-meet",
+    "type": "text",
+    "response": "У Каті мітинг тому я без мікро тимчасово \uD83C\uDFA4❌"
+  },
+  {
     "pattern": "Бобер 67",
     "type": "mention",
     "response": "Працюй, паскуда"
