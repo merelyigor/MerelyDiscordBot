@@ -7,6 +7,7 @@ import { canAccessChannel, pickChannelId } from './channels.js';
 import { registerCommands } from './commands.js';
 import { loadConfig } from './config.js';
 import { connectDatabase } from './database.js';
+import { buildHelpEmbed } from './help.js';
 import { startDailyQuoteTimer } from './daily-quote.js';
 import { getRandomMotivation } from './motivation.js';
 import { sendPoll } from './poll.js';
@@ -42,6 +43,10 @@ client.once(Events.ClientReady, async (readyClient) => {
 
 client.on(Events.InteractionCreate, (interaction) => void (async () => {
   if (!interaction.isChatInputCommand()) return;
+  if (interaction.commandName === 'help' || interaction.commandName === 'допомога') {
+    await interaction.reply({ embeds: [buildHelpEmbed()] });
+    return;
+  }
   if (interaction.commandName === 'ping') {
     await interaction.reply('Pong!');
     return;

@@ -144,6 +144,11 @@ const commands = [
         .setDescriptionLocalizations({ uk: 'Десятий варіант відповіді.' })
         .setRequired(false)),
   new SlashCommandBuilder()
+    .setName('help')
+    .setNameLocalizations({ uk: 'допомога' })
+    .setDescription('Show all commands and features.')
+    .setDescriptionLocalizations({ uk: 'Показати всі команди та можливості бота.' }),
+  new SlashCommandBuilder()
     .setName('mute')
     .setDescription('Timeout a user.')
     .setDescriptionLocalizations({ uk: 'Замутити користувача.' })
