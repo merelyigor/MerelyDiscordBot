@@ -17,6 +17,50 @@ const commands = [
         .setDescription('User to motivate')
         .setDescriptionLocalizations({ uk: 'Користувач, якому надіслати мотивацію.' })
         .setRequired(true)),
+  new SlashCommandBuilder()
+    .setName('remind')
+    .setNameLocalizations({ uk: 'нагадай' })
+    .setDescription('Set a reminder.')
+    .setDescriptionLocalizations({ uk: 'Встановити нагадування.' })
+    .addIntegerOption((option) =>
+      option
+        .setName('duration')
+        .setNameLocalizations({ uk: 'тривалість' })
+        .setDescription('How long until reminder')
+        .setDescriptionLocalizations({ uk: 'Через скільки нагадати.' })
+        .setRequired(true)
+        .setMinValue(1)
+        .setMaxValue(1440))
+    .addStringOption((option) =>
+      option
+        .setName('unit')
+        .setNameLocalizations({ uk: 'одиниця' })
+        .setDescription('Time unit')
+        .setDescriptionLocalizations({ uk: 'Одиниця часу.' })
+        .setRequired(true)
+        .addChoices(
+          { name: 'хвилин', value: 'minutes' },
+          { name: 'годин', value: 'hours' },
+        ))
+    .addStringOption((option) =>
+      option
+        .setName('text')
+        .setNameLocalizations({ uk: 'текст' })
+        .setDescription('What to remind about')
+        .setDescriptionLocalizations({ uk: 'Про що нагадати.' })
+        .setRequired(false)),
+  new SlashCommandBuilder()
+    .setName('afk')
+    .setNameLocalizations({ uk: 'афк' })
+    .setDescription('Set AFK status.')
+    .setDescriptionLocalizations({ uk: 'Встановити статус AFK.' })
+    .addStringOption((option) =>
+      option
+        .setName('reason')
+        .setNameLocalizations({ uk: 'причина' })
+        .setDescription('Why you are AFK')
+        .setDescriptionLocalizations({ uk: 'Чому ви AFK.' })
+        .setRequired(false)),
 ].map((command) => command.toJSON());
 
 export async function registerCommands(config: BotConfig): Promise<void> {

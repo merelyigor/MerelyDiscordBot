@@ -2,11 +2,14 @@
 import { randomUUID } from 'node:crypto';
 import { writeFile } from 'node:fs/promises';
 import { ChannelType, Client, Events, GatewayIntentBits, type GuildMember } from 'discord.js';
+import { removeAfk, setAfk, getAfkStatus } from './afk.js';
 import { canAccessChannel, pickChannelId } from './channels.js';
 import { registerCommands } from './commands.js';
 import { loadConfig } from './config.js';
 import { connectDatabase } from './database.js';
+import { startDailyQuoteTimer } from './daily-quote.js';
 import { getRandomMotivation } from './motivation.js';
+import { createReminder, loadPendingReminders } from './reminders.js';
 import { extractMentionTarget, formatMentionReply, matchRules, resolveChannels, resolveTargetResponse, type ChannelPair, type MentionTarget } from './rules.js';
 
 const config = loadConfig();
@@ -29,6 +32,10 @@ client.once(Events.ClientReady, async (readyClient) => {
   );
   await markHealthy();
   heartbeat = setInterval(() => void markHealthy(), 30_000);
+  await loadPendingReminders(database, client);
+  if (config.dailyQuoteChannelId) {
+    startDailyQuoteTimer(client, config.dailyQuoteChannelId, config.dailyQuoteHour);
+  }
   console.info(`Discord bot ready as ${readyClient.user.tag}`);
 });
 
@@ -42,6 +49,26 @@ client.on(Events.InteractionCreate, (interaction) => void (async () => {
     const target = interaction.options.getUser('user', true);
     const motivation = getRandomMotivation();
     await interaction.reply(`> ${motivation.quote}\n— *${motivation.author}*\n<@${target.id}>`);
+    return;
+  }
+  if (interaction.commandName === 'remind' || interaction.commandName === 'нагадай') {
+    const duration = interaction.options.getInteger('duration', true);
+    const unit = interaction.options.getString('unit', true);
+    const text = interaction.options.getString('text') ?? '';
+    const ms = unit === 'hours' ? duration * 60 * 60 * 1000 : duration * 60 * 1000;
+    const remindAt = new Date(Date.now() + ms);
+    const channelId = interaction.channel?.id ?? interaction.user.id;
+    const id = await createReminder(database, interaction.user.id, channelId, text, remindAt);
+    const unitLabel = unit === 'hours' ? (duration === 1 ? 'годину' : 'годин') : (duration === 1 ? 'хвилину' : 'хвилин');
+    await interaction.reply(`Нагадування #${id} створено: через ${duration} ${unitLabel}${text ? ` — ${text}` : ''}`);
+    return;
+  }
+  if (interaction.commandName === 'afk' || interaction.commandName === 'афк') {
+    const reason = interaction.options.getString('reason');
+    await setAfk(database, interaction.user.id, interaction.guildId ?? '', reason);
+    const label = reason ? ` (${reason})` : '';
+    await interaction.reply(`Тепер ти AFK${label}. Зніму, коли напишеш у чат.`);
+    return;
   }
 })().catch((error: unknown) => console.error('Interaction handler failed', error)));
 
@@ -62,7 +89,18 @@ async function resolveMentionTarget(target: MentionTarget, member: GuildMember):
 
 client.on(Events.MessageCreate, (message) => void (async () => {
   if (message.author.bot || !message.inGuild()) return;
-  console.info(`[debug] MessageCreate received: channel=${message.channelId} contentLen=${message.content.length}`);
+  const wasAfk = await removeAfk(database, message.author.id);
+  if (wasAfk) {
+    await message.reply('Ласкаво просимо назад! AFK знято.');
+  }
+  for (const [userId] of message.mentions.users) {
+    if (userId === message.author.id) continue;
+    const afk = await getAfkStatus(database, userId);
+    if (afk) {
+      const reason = afk.reason ? ` (${afk.reason})` : '';
+      await message.reply(`<@${userId}> зараз AFK${reason}.`);
+    }
+  }
   const matched = matchRules(message.content);
   if (!matched) return;
   const { rule } = matched;

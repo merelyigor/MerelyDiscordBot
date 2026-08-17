@@ -75,6 +75,8 @@ bash scripts/agent-check.sh full
 - Guild commands використовують `DISCORD_GUILD_ID`; без нього commands global (§17.2).
 - Health heartbeat починається лише після `ClientReady`; SIGINT/SIGTERM закривають client і pool (§17).
 - `bot_runtime` - operational data; schema changes additive/idempotent, SQL inputs через placeholders (§18).
+- `reminders` - нагадування (`/нагадай`); таймери відновлюються при старті з БД (§18).
+- `afk_status` - статус AFK (`/афк`); зберігається між перезапусками (§18).
 - Unit tests не підключаються до MariaDB; DB integration потребує окремої `*_testing` БД (§18.5).
 
 ## 7. Інструменти

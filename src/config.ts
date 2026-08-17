@@ -6,6 +6,8 @@ export interface BotConfig {
   officeVoiceChannelId: string;
   database: { host: string; port: number; database: string; user: string; password: string };
   healthFile: string;
+  dailyQuoteChannelId?: string;
+  dailyQuoteHour: number;
 }
 
 function required(env: NodeJS.ProcessEnv, name: string): string {
@@ -16,6 +18,7 @@ function required(env: NodeJS.ProcessEnv, name: string): string {
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): BotConfig {
   const discordGuildId = env.DISCORD_GUILD_ID?.trim() || undefined;
+  const dailyQuoteChannelId = env.DAILY_QUOTE_CHANNEL_ID?.trim() || undefined;
   return {
     discordToken: required(env, 'DISCORD_TOKEN'),
     discordClientId: required(env, 'DISCORD_CLIENT_ID'),
@@ -30,5 +33,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): BotConfig {
       password: required(env, 'DB_PASSWORD'),
     },
     healthFile: env.BOT_HEALTH_FILE || '/tmp/merely-discord-bot-health',
+    ...(dailyQuoteChannelId ? { dailyQuoteChannelId } : {}),
+    dailyQuoteHour: Number.parseInt(env.DAILY_QUOTE_HOUR || '9', 10),
   };
 }
