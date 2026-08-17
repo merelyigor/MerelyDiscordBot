@@ -78,6 +78,12 @@ client.on(Events.InteractionCreate, (interaction) => void (async () => {
       interaction.options.getString('option2', true),
       interaction.options.getString('option3'),
       interaction.options.getString('option4'),
+      interaction.options.getString('option5'),
+      interaction.options.getString('option6'),
+      interaction.options.getString('option7'),
+      interaction.options.getString('option8'),
+      interaction.options.getString('option9'),
+      interaction.options.getString('option10'),
     ].filter((o): o is string => o !== null);
     await interaction.deferReply();
     const msg = await interaction.fetchReply();

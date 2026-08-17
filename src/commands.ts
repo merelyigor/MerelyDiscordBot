@@ -100,6 +100,48 @@ const commands = [
         .setNameLocalizations({ uk: 'варіант4' })
         .setDescription('Fourth option')
         .setDescriptionLocalizations({ uk: 'Четвертий варіант відповіді.' })
+        .setRequired(false))
+    .addStringOption((option) =>
+      option
+        .setName('option5')
+        .setNameLocalizations({ uk: 'варіант5' })
+        .setDescription('Fifth option')
+        .setDescriptionLocalizations({ uk: "П'ятий варіант відповіді." })
+        .setRequired(false))
+    .addStringOption((option) =>
+      option
+        .setName('option6')
+        .setNameLocalizations({ uk: 'варіант6' })
+        .setDescription('Sixth option')
+        .setDescriptionLocalizations({ uk: 'Шостий варіант відповіді.' })
+        .setRequired(false))
+    .addStringOption((option) =>
+      option
+        .setName('option7')
+        .setNameLocalizations({ uk: 'варіант7' })
+        .setDescription('Seventh option')
+        .setDescriptionLocalizations({ uk: 'Сьомий варіант відповіді.' })
+        .setRequired(false))
+    .addStringOption((option) =>
+      option
+        .setName('option8')
+        .setNameLocalizations({ uk: 'варіант8' })
+        .setDescription('Eighth option')
+        .setDescriptionLocalizations({ uk: 'Восьмий варіант відповіді.' })
+        .setRequired(false))
+    .addStringOption((option) =>
+      option
+        .setName('option9')
+        .setNameLocalizations({ uk: 'варіант9' })
+        .setDescription('Ninth option')
+        .setDescriptionLocalizations({ uk: "Дев'ятий варіант відповіді." })
+        .setRequired(false))
+    .addStringOption((option) =>
+      option
+        .setName('option10')
+        .setNameLocalizations({ uk: 'варіант10' })
+        .setDescription('Tenth option')
+        .setDescriptionLocalizations({ uk: 'Десятий варіант відповіді.' })
         .setRequired(false)),
   new SlashCommandBuilder()
     .setName('mute')
