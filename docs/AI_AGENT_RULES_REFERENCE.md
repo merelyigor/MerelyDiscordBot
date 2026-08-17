@@ -153,6 +153,42 @@
 - §18.5 DB integration tests використовують окрему `merely_discord_bot_testing`, ніколи local/prod DB.
 - §18.6 Backfill оцінюється на idempotency, resumability, duration і worker compatibility.
 
+### §18.7 Двосхемний сетап БД (deploy + startup)
+
+БД сетапляться **автоматично на двох рівнях**:
+
+**Рівень 1 — Deploy-скрипт** (`ensure_project_database_exists` у `framework-deploy-tasks.sh`):
+- Виконується під час `deploy-single-project.sh` крок 9 для worker-проєктів.
+- Перевіряє існування БД через `INFORMATION_SCHEMA.SCHEMATA`.
+- Якщо БД немає — створює `CREATE DATABASE IF NOT EXISTS ... CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`.
+- Створює користувача `CREATE USER IF NOT EXISTS` + `GRANT ALL PRIVILEGES`.
+- Виконується через `docker exec` в контейнер `infra-mariadb-database`.
+
+**Рівень 2 — Application startup** (`connectDatabase()` у `database.ts`):
+- При кожному старті бота виконує `CREATE TABLE IF NOT EXISTS` для всіх таблиць.
+- Повністю ідемпотентно — безпечно запускати скільки завгодно разів.
+- Поточні таблиці: `bot_runtime`, `reminders`, `afk_status`.
+
+### §18.8 Нові таблиці та колонки
+
+- **Нова таблиця**: додати `CREATE TABLE IF NOT EXISTS` в `database.ts` → `connectDatabase()`.
+- **Нова колонка**: додати `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` в `database.ts`.
+- **Зміна типу/видалення колонки**: destructive; потребує migration plan та явного дозволу (§18.1).
+- **Немає міграційного інструменту** (Prisma, Knex тощо) — лише ідемпотентний DDL при старті.
+
+### §18.9 ENV змінні для підключення до БД
+
+| ENV | Required | Default | Опис |
+|---|---|---|---|
+| `DB_HOST` | так | `infra-mariadb-database` | Docker DNS на `merely-infra-docker-net` |
+| `DB_PORT` | ні | `3306` | |
+| `DB_DATABASE` | так | — | `merely_discord_bot` (prod), `merely_discord_bot_local` (local) |
+| `DB_USERNAME` | так | — | `${MYSQL_USER}` з infra `.env` |
+| `DB_PASSWORD` | так | — | `${MYSQL_PASSWORD}` з infra `.env` |
+
+Deploy-time додаткові прапорці (керують `ensure_project_database_exists`):
+`DB_CONNECTION=mysql`, `DB_ENSURE_ON_DEPLOY=true`, `DB_ENSURE_CREATE_IF_MISSING=true`, `DB_ENSURE_FAIL_ON_ERROR=true`.
+
 ## §19 Docker та Infra
 - §19.1 Container не публікує port і працює non-root з memory/CPU limits.
 - §19.2 Compose використовує external `merely-infra-docker-net` і shared MariaDB.

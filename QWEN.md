@@ -77,6 +77,8 @@ bash scripts/agent-check.sh full
 - `bot_runtime` - operational data; schema changes additive/idempotent, SQL inputs через placeholders (§18).
 - `reminders` - нагадування (`/нагадай`); таймери відновлюються при старті з БД (§18).
 - `afk_status` - статус AFK (`/афк`); зберігається між перезапусками (§18).
+- Двосхемний сетап БД: deploy-скрипт створює БД + користувача, app startup створює таблиці через `CREATE TABLE IF NOT EXISTS` (§18.7).
+- Нові таблиці/колонки додаються idempotent DDL в `database.ts`; міграційного інструменту немає (§18.8).
 - Unit tests не підключаються до MariaDB; DB integration потребує окремої `*_testing` БД (§18.5).
 
 ## 7. Інструменти
