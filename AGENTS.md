@@ -81,6 +81,7 @@ bash scripts/agent-check.sh full
 - Нові таблиці/колонки додаються idempotent DDL в `database.ts`; міграційного інструменту немає (§18.8).
 - `/poll` (`/голосувати`) - голосування з реакціями-емодзі (discord.js reactions).
 - `/mute` - тимчасовий timeout (moderation); потребує ModerateMembers permission (§17).
+- `/help` (`/допомога`) - повна довідка бота; **має завжди відображати актуальний стан** команд та правил (§22.5).
 
 ## 7. Інструменти
 
