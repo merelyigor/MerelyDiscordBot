@@ -9,6 +9,7 @@ import { loadConfig } from './config.js';
 import { connectDatabase } from './database.js';
 import { startDailyQuoteTimer } from './daily-quote.js';
 import { getRandomMotivation } from './motivation.js';
+import { sendPoll } from './poll.js';
 import { createReminder, loadPendingReminders } from './reminders.js';
 import { extractMentionTarget, formatMentionReply, matchRules, resolveChannels, resolveTargetResponse, type ChannelPair, type MentionTarget } from './rules.js';
 
@@ -68,6 +69,34 @@ client.on(Events.InteractionCreate, (interaction) => void (async () => {
     await setAfk(database, interaction.user.id, interaction.guildId ?? '', reason);
     const label = reason ? ` (${reason})` : '';
     await interaction.reply(`Тепер ти AFK${label}. Зніму, коли напишеш у чат.`);
+    return;
+  }
+  if (interaction.commandName === 'poll' || interaction.commandName === 'голосувати') {
+    const question = interaction.options.getString('question', true);
+    const options = [
+      interaction.options.getString('option1', true),
+      interaction.options.getString('option2', true),
+      interaction.options.getString('option3'),
+      interaction.options.getString('option4'),
+    ].filter((o): o is string => o !== null);
+    await interaction.deferReply();
+    const msg = await interaction.fetchReply();
+    await sendPoll(msg, question, options);
+    await interaction.editReply('Голосування створено!');
+    return;
+  }
+  if (interaction.commandName === 'mute') {
+    const target = interaction.options.getUser('user', true);
+    const duration = interaction.options.getInteger('duration', true);
+    const reason = interaction.options.getString('reason');
+    const member = interaction.guild?.members.cache.get(target.id) ?? await interaction.guild?.members.fetch(target.id);
+    if (!member) {
+      await interaction.reply('Користувача не знайдено на сервері.');
+      return;
+    }
+    await member.timeout(duration * 60 * 1000, reason ?? undefined);
+    const label = reason ? ` Причина: ${reason}` : '';
+    await interaction.reply(`${target.tag} замучений на ${duration} хв.${label}`);
     return;
   }
 })().catch((error: unknown) => console.error('Interaction handler failed', error)));

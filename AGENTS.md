@@ -79,7 +79,8 @@ bash scripts/agent-check.sh full
 - `afk_status` - статус AFK (`/афк`); зберігається між перезапусками (§18).
 - Двосхемний сетап БД: deploy-скрипт створює БД + користувача, app startup створює таблиці через `CREATE TABLE IF NOT EXISTS` (§18.7).
 - Нові таблиці/колонки додаються idempotent DDL в `database.ts`; міграційного інструменту немає (§18.8).
-- Unit tests не підключаються до MariaDB; DB integration потребує окремої `*_testing` БД (§18.5).
+- `/poll` (`/голосувати`) - голосування з реакціями-емодзі (discord.js reactions).
+- `/mute` - тимчасовий timeout (moderation); потребує ModerateMembers permission (§17).
 
 ## 7. Інструменти
 
