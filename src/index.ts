@@ -7,7 +7,7 @@ import { registerCommands } from './commands.js';
 import { loadConfig } from './config.js';
 import { connectDatabase } from './database.js';
 import { getRandomMotivation } from './motivation.js';
-import { extractMentionTarget, formatMentionReply, matchRules, resolveChannels, type ChannelPair, type MentionTarget } from './rules.js';
+import { extractMentionTarget, formatMentionReply, matchRules, resolveChannels, resolveTargetResponse, type ChannelPair, type MentionTarget } from './rules.js';
 
 const config = loadConfig();
 const database = await connectDatabase(config.database);
@@ -72,6 +72,15 @@ client.on(Events.MessageCreate, (message) => void (async () => {
     channelIds[key] = await resolveChannelPair(pair, member, client);
   }
   const response = resolveChannels(rule.response, channelIds);
+  if (rule.targets) {
+    const authorName = member.displayName.toLocaleLowerCase('uk-UA');
+    const authorUsername = message.author.username.toLocaleLowerCase('uk-UA');
+    const targetResponse = resolveTargetResponse(rule.targets, authorName, authorUsername);
+    if (targetResponse) {
+      await message.reply(resolveChannels(targetResponse, channelIds));
+      return;
+    }
+  }
   if (rule.type === 'mention') {
     const target = extractMentionTarget(message.content);
     const targetId = target ? await resolveMentionTarget(target, member) : null;

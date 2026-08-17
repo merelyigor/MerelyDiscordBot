@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { extractMentionTarget, formatMentionReply, getRules, matchRules, resolveChannels } from '../src/rules.js';
+import { extractMentionTarget, formatMentionReply, getRules, matchRules, resolveChannels, resolveTargetResponse } from '../src/rules.js';
 
 test('rules.json contains the office rule with channel pair', () => {
   const rules = getRules();
@@ -64,4 +64,44 @@ test('extractMentionTarget returns null when no mention present', () => {
 
 test('formatMentionReply prefixes response with mention and space', () => {
   assert.equal(formatMentionReply('<@1234567890>', 'Працюй, паскуда'), '<@1234567890> Працюй, паскуда');
+});
+
+test('resolveTargetResponse returns target response when author matches by displayName', () => {
+  const targets = { '@merelyigor': 'відповідь для Ігоря', '@n0op': 'відповідь для n0op' };
+  assert.equal(resolveTargetResponse(targets, 'merelyigor', 'other'), 'відповідь для Ігоря');
+  assert.equal(resolveTargetResponse(targets, 'n0op', 'other'), 'відповідь для n0op');
+});
+
+test('resolveTargetResponse returns target response when author matches by username', () => {
+  const targets = { '@merelyigor': 'відповідь для Ігоря' };
+  assert.equal(resolveTargetResponse(targets, 'someone', 'merelyigor'), 'відповідь для Ігоря');
+});
+
+test('resolveTargetResponse returns null when no target matches', () => {
+  const targets = { '@merelyigor': 'відповідь для Ігоря', '@n0op': 'відповідь для n0op' };
+  assert.equal(resolveTargetResponse(targets, 'unknownuser', 'unknown'), null);
+});
+
+test('resolveTargetResponse returns null when targets is undefined', () => {
+  assert.equal(resolveTargetResponse(undefined, 'merelyigor', 'merelyigor'), null);
+});
+
+test('resolveTargetResponse strips @ prefix and matches case-insensitively', () => {
+  const targets = { '@MerelyIgor': 'відповідь' };
+  assert.equal(resolveTargetResponse(targets, 'merelyigor', 'other'), 'відповідь');
+  assert.equal(resolveTargetResponse(targets, 'other', 'MERELYIGOR'), 'відповідь');
+});
+
+test('meet rule has targets defined', () => {
+  const rules = getRules();
+  const meetRule = rules.find((r) => r.targets && r.targets['@merelyigor']);
+  assert.ok(meetRule, 'meet rule with targets missing');
+  assert.equal(meetRule.type, 'regex');
+  assert.ok(meetRule.targets['@merelyigor'], 'targets must have @merelyigor');
+});
+
+test('meet rule regex matches all triggers', () => {
+  assert.ok(matchRules('!meet'));
+  assert.ok(matchRules('!merely-meet'));
+  assert.ok(matchRules('у каті мітинг'));
 });

@@ -67,8 +67,9 @@ bash scripts/agent-check.sh full
 ## 6. Архітектурні інваріанти
 
 - Стек: Node.js >=22.12, TypeScript strict, discord.js, mysql2/MariaDB, Docker worker.
-- `src/index.ts` - transport/orchestration; config, commands і persistence ізольовані (§6, §17).
-- Лише `GatewayIntentBits.Guilds`; новий intent потребує доведеної функціональної потреби (§17.1).
+- `src/index.ts` - transport/orchestration; config, commands і database ізольовані (§6, §17).
+- Базовий Gateway intent — `Guilds`; новий intent потребує доведеної функціональної потреби (§17.1).
+- `GatewayIntentBits.GuildMessages` і `GatewayIntentBits.MessageContent` увімкнено для обробки message content (§17.7).
 - `Message Content Intent` увімкнено; він необхідний для office greeting та slash command options (§17.7).
 - `Server Members Intent` (`GatewayIntentBits.GuildMembers`) увімкнено; він необхідний для резолву `#нікнейм` у mention-правилах (§17.1).
 - Guild commands використовують `DISCORD_GUILD_ID`; без нього commands global (§17.2).
@@ -87,7 +88,6 @@ bash scripts/agent-check.sh full
 
 Одна вузька задача за сесію. Порядок: один факт -> focused test -> full gate.
 Без вигаданих API/ENV/результатів, необов'язкових abstractions і секретів у контексті (§21).
-Моделі кваліфікуються за infra `docs/AGENT-MODEL-QUALIFICATION.md`.
 
 ## 9. Фінальний звіт
 

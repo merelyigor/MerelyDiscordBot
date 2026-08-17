@@ -13,6 +13,7 @@ export interface Rule {
   response: string;
   id?: string;
   channels?: Record<string, ChannelPair>;
+  targets?: Record<string, string>;
 }
 
 export interface MatchResult {
@@ -66,4 +67,19 @@ export function extractMentionTarget(content: string): MentionTarget | null {
 
 export function formatMentionReply(mention: string, response: string): string {
   return `${mention} ${response}`;
+}
+
+export function resolveTargetResponse(
+  targets: Record<string, string> | undefined,
+  authorName: string,
+  authorUsername: string,
+): string | null {
+  if (!targets) return null;
+  const name = authorName.toLocaleLowerCase('uk-UA');
+  const username = authorUsername.toLocaleLowerCase('uk-UA');
+  for (const [key, response] of Object.entries(targets)) {
+    const nick = key.replace(/^@/, '').toLocaleLowerCase('uk-UA');
+    if (nick === name || nick === username) return response;
+  }
+  return null;
 }

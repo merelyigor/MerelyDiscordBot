@@ -17,19 +17,12 @@
     "response": "Отваліська!"
   },
   {
-    "pattern": "!merely-meet",
-    "type": "text",
-    "response": "У Каті мітинг тому я без мікро тимчасово \uD83C\uDFA4❌"
-  },
-  {
-    "pattern": "у каті мітинг",
-    "type": "text",
-    "response": "У Каті мітинг тому я без мікро тимчасово \uD83C\uDFA4❌"
-  },
-  {
-    "pattern": "!meet",
-    "type": "text",
-    "response": "Притворяеться будто-би нього теж мітинг \uD83D\uDE02 \uD83E\uDD23 \uD83D\uDE06 \uD83D\uDE39 \uD83D\uDE04 \uD83C\uDFA4❌"
+    "pattern": "!meet|!merely-meet|у каті мітинг",
+    "type": "regex",
+    "targets": {
+      "@merelyigor": "У Каті мітинг тому я без мікро тимчасово \uD83C\uDFA4❌"
+    },
+    "response": "У Каті мітинг тому Ігорюсік мікро тимчасово замутив - пишіть в чат або йому на домофон набирайте \uD83D\uDE02 \uD83E\uDD23 \uD83D\uDE06 \uD83D\uDE39 \uD83D\uDE04 \uD83C\uDFA4❌"
   },
   {
     "pattern": "Бобер 67",
