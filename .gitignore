@@ -1,6 +1,12 @@
 node_modules/
-.idea/
 dist/
 .env
 coverage/
 *.log
+
+# JetBrains: track shared settings, ignore user-specific
+.idea/workspace.xml
+.idea/shelf/
+.idea/httpRequests/
+.idea/datasources.xml
+.idea/datasources/
