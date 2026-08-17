@@ -48,7 +48,7 @@ const commands = [
         .setNameLocalizations({ uk: 'текст' })
         .setDescription('What to remind about')
         .setDescriptionLocalizations({ uk: 'Про що нагадати.' })
-        .setRequired(false)),
+        .setRequired(true)),
   new SlashCommandBuilder()
     .setName('afk')
     .setNameLocalizations({ uk: 'афк' })

@@ -54,13 +54,13 @@ client.on(Events.InteractionCreate, (interaction) => void (async () => {
   if (interaction.commandName === 'remind' || interaction.commandName === 'нагадай') {
     const duration = interaction.options.getInteger('duration', true);
     const unit = interaction.options.getString('unit', true);
-    const text = interaction.options.getString('text') ?? '';
+    const text = interaction.options.getString('text', true);
     const ms = unit === 'hours' ? duration * 60 * 60 * 1000 : duration * 60 * 1000;
     const remindAt = new Date(Date.now() + ms);
     const channelId = interaction.channel?.id ?? interaction.user.id;
     const id = await createReminder(database, interaction.user.id, channelId, text, remindAt);
     const unitLabel = unit === 'hours' ? (duration === 1 ? 'годину' : 'годин') : (duration === 1 ? 'хвилину' : 'хвилин');
-    await interaction.reply(`Нагадування #${id} створено: через ${duration} ${unitLabel}${text ? ` — ${text}` : ''}`);
+    await interaction.reply(`Нагадування #${id} створено: через ${duration} ${unitLabel} — ${text}`);
     return;
   }
   if (interaction.commandName === 'afk' || interaction.commandName === 'афк') {

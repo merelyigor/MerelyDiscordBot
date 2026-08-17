@@ -48,7 +48,7 @@ function scheduleReminder(
       if (!clientRef) return;
       const channel = await clientRef.channels.fetch(channelId) as TextChannel | null;
       if (!channel || !('send' in channel)) return;
-      const text = message ? `<@${userId}> Нагадую: ${message}` : `<@${userId}> Час сплинув!`;
+      const text = `<@${userId}> Нагадую: ${message}`;
       await channel.send(text);
     } catch { /* channel deleted or bot removed */ }
     await db.execute(`DELETE FROM reminders WHERE id = ?`, [id]).catch(() => {});
