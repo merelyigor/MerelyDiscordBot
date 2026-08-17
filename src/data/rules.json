@@ -27,6 +27,11 @@
     "response": "У Каті мітинг тому я без мікро тимчасово \uD83C\uDFA4❌"
   },
   {
+    "pattern": "!meet",
+    "type": "text",
+    "response": "Притворяеться будто-би нього теж мітинг \uD83D\uDE02 \uD83E\uDD23 \uD83D\uDE06 \uD83D\uDE39 \uD83D\uDE04 \uD83C\uDFA4❌"
+  },
+  {
     "pattern": "Бобер 67",
     "type": "mention",
     "response": "Працюй, паскуда"
