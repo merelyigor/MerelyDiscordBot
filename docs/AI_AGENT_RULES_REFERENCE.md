@@ -18,6 +18,7 @@
 - §3.2 Код, identifiers, logs та error messages не перекладати.
 - §3.3 Припущення, ризики, blockers і невиконані checks позначати явно.
 - §3.4 Вся документація проєкту (README, docs/, guides) ведеться українською; англійська — лише для термінології, назв команд/файлів/ENV, code identifiers та посилань.
+- §3.5 Агент виконує команди самостійно; не перекладає кроки на користувача (напр. «запусти сам», «подивись сам»).
 
 ## §4 Базовий режим роботи
 - §4.1 Спочатку факти з коду, call sites, lock-файла, config і tests, потім зміни.
@@ -104,7 +105,7 @@
 - §12.3 Значущу user/integration behavior зміну документувати пропорційно її впливу.
 
 ## §13 Git і destructive actions
-- §13.1 Commit, push, tag, rebase, force або history rewrite - лише за разовим явним дозволом.
+- §13.1 `git commit`, `git push`, tag, rebase, force або history rewrite — **заборонено за замовчуванням**. Дозволено ТІЛЬКИ якщо власник прямо попросив у поточному повідомленні (напр. «закоміть», «комітни», «push», «запуш»). Агент НІКОЛИ не робить commit/push самостійно навіть після виконаної роботи.
 - §13.2 Не змішувати rule change, application refactor та unrelated infra changes в одному commit.
 - §13.3 Не видаляти files/data та не виконувати destructive DB commands без дозволу.
 - §13.4 Перед генерацією commit message прочитати [`COMMIT-MESSAGE-PROMPT.md`](COMMIT-MESSAGE-PROMPT.md) і точно виконати його формат, version rules та обмеження.
@@ -212,3 +213,16 @@ Deploy-time додаткові прапорці (керують `ensure_project_
 - §21.3 Порядок доказу: факт -> focused test -> full gate.
 - §21.4 Після двох failures змінювати strategy; не додавати speculative code.
 - §21.5 Перед фіналом переглянути diff на secrets, generated files і scope drift.
+
+## §22 Додаткові правила роботи
+- §22.1 Не дублювати існуючу логіку/хелпер без конкретної причини; перед створенням нового — знайти наявний аналог.
+- §22.2 Не ламати публічні контракти (command names, ENV keys, DB schema) без пояснення впливу та згоди власника.
+- §22.3 Для нестабільних або зовнішніх фактів (API versions, library behavior) використовувати актуальні первинні джерела (код, lock-файл, docs), а не пам'ять моделі.
+- §22.4 Не змінювати derived/generated файли (`.env`, `dist/`, `node_modules/`) замість їх canonical source.
+
+## §23 JetBrains IDE (WebStorm)
+- §23.1 IDE піднімає власний MCP-сервер (`Settings → Tools → MCP Server`); це окремий механізм від Serena.
+- §23.2 Без активного IDE canonical path — `rg` + targeted reads + тести; зникнення сервера майже завжди новий порт.
+- §23.3 Факти брати з IDE (інспекції, граф викликів, мова), а не вгадувати; після генерації коду — перепитати індекс.
+- §23.4 IDE не замінює обов'язкові перевірки: `get_file_problems` — precheck на один файл, а не заміна typecheck/lint/tests/build.
+- §23.5 Правки через `apply_patch`, `create_new_file`, `rename_refactoring` підлягають тим самим правилам, що й звичайні зміни файлів.

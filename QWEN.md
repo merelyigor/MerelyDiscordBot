@@ -16,7 +16,7 @@
 
 ## 2. Незмінні заборони
 
-- `git commit`, `git push`, force/rebase/tag - лише після разового явного дозволу (§13.1).
+- `git commit`, `git push`, force/rebase/tag — **заборонено за замовчуванням**; дозволено ТІЛЬКИ якщо власник прямо попросив у поточному повідомленні (§13.1).
 - Production read-only за замовчуванням; шлях змін: local -> checks -> commit -> infra deploy (§10).
 - Local Discord runtime запускається лише на час потрібної перевірки та після неї не вважається постійним сервісом.
 - Production Discord runtime після штатного deploy має працювати постійно; зупинка або unhealthy state є production-інцидентом, крім погодженого maintenance.
@@ -86,6 +86,7 @@ bash scripts/agent-check.sh full
 
 - Serena - semantic navigation/refactoring; configs, Docker, ENV і короткі файли - targeted reads (§5.1-§5.4).
 - Context7 - для external library API; встановлений `package-lock.json` має пріоритет (§5.5-§5.8).
+- JetBrains IDE (WebStorm) - MCP-сервер для інспекцій, графів викликів, мовного індексу; не замінює typecheck/lint/tests (§23).
 - Shadcn/UI і Playwright не застосовуються: проєкт не має frontend або browser surface (§5.9-§5.10).
 - Browser не потрібен; runtime перевіряється tests, Docker health, logs і Discord test guild.
 
