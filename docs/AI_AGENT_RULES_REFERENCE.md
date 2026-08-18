@@ -153,6 +153,9 @@
 - §18.4 Transactions потрібні для multi-write invariant; failures не залишають partial state.
 - §18.5 DB integration tests використовують окрему `merely_discord_bot_testing`, ніколи local/prod DB.
 - §18.6 Backfill оцінюється на idempotency, resumability, duration і worker compatibility.
+- §18.7 БД сетапиться на двох рівнях: deploy-скрипт створює саму базу й користувача, а app startup створює таблиці ідемпотентним `CREATE TABLE IF NOT EXISTS`. Жоден із рівнів не підмінює інший; подробиці нижче.
+- §18.8 Нова таблиця або колонка додається ідемпотентним DDL у `database.ts`; міграційного інструменту в проєкті немає, тому зміна типу чи видалення колонки лишається destructive і потребує окремого дозволу (§18.1).
+- §18.9 Підключення до БД конфігурується лише ENV-змінними з таблиці нижче; hardcode хоста, користувача чи пароля в коді заборонений.
 
 ### §18.7 Двосхемний сетап БД (deploy + startup)
 
