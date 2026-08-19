@@ -17,6 +17,11 @@
     "response": "Отваліська!"
   },
   {
+    "pattern": "срака",
+    "type": "text",
+    "response": "мотика!"
+  },
+  {
     "pattern": "!meet|!merely-meet|у каті мітинг",
     "type": "regex",
     "targets": {
