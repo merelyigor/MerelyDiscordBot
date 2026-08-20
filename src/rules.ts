@@ -11,6 +11,7 @@ export interface Rule {
   pattern: string;
   type: 'text' | 'regex' | 'mention';
   response: string;
+  media?: string;
   id?: string;
   channels?: Record<string, ChannelPair>;
   targets?: Record<string, string>;

@@ -3,5 +3,6 @@
     <option name="myName" value="Project Default" />
     <inspection_tool class="Eslint" enabled="true" level="WARNING" enabled_by_default="true" />
     <inspection_tool class="SqlInspectionWithoutDataSources" enabled="false" level="WARNING" enabled_by_default="true" />
+    <inspection_tool class="RegExpRedundantEscape" enabled="false" level="WARNING" enabled_by_default="true" />
   </profile>
 </component>

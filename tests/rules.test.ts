@@ -105,3 +105,22 @@ test('meet rule regex matches all triggers', () => {
   assert.ok(matchRules('!merely-meet'));
   assert.ok(matchRules('у каті мітинг'));
 });
+
+test('media field is optional and undefined when not set', () => {
+  const rules = getRules();
+  for (const rule of rules) {
+    assert.ok(rule.media === undefined || typeof rule.media === 'string',
+      `rule.media should be string or undefined, got ${typeof rule.media}`);
+  }
+});
+
+test('forgotten rule matches Ukrainian and Russian forgetting phrases', () => {
+  assert.ok(matchRules('забувся'));
+  assert.ok(matchRules('не помню'));
+  assert.ok(matchRules('не можу згадати'));
+  assert.ok(matchRules('не могу вспомнить'));
+  const matched = matchRules('забувся');
+  assert.ok(matched);
+  assert.ok(matched.rule.response.length > 0);
+  assert.equal(matched.rule.media, 'colomoyski.mp4');
+});

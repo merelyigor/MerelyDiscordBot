@@ -1,7 +1,10 @@
-// noinspection SqlNoDataSourceInspection
+//noinspection SqlInspectionWithoutDataSources
 import { randomUUID } from 'node:crypto';
+import { existsSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
-import { ChannelType, Client, Events, GatewayIntentBits, type GuildMember } from 'discord.js';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { AttachmentBuilder, ChannelType, Client, Events, GatewayIntentBits, type GuildMember } from 'discord.js';
 import { removeAfk, setAfk, getAfkStatus } from './afk.js';
 import { canAccessChannel, pickChannelId } from './channels.js';
 import { registerCommands } from './commands.js';
@@ -18,6 +21,7 @@ const config = loadConfig();
 const database = await connectDatabase(config.database);
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMembers] });
 const instanceId = randomUUID();
+const __dirname = dirname(fileURLToPath(import.meta.url));
 let heartbeat: NodeJS.Timeout | undefined;
 
 async function markHealthy(): Promise<void> {
@@ -127,6 +131,16 @@ async function resolveMentionTarget(target: MentionTarget, member: GuildMember):
   return found ? found.id : null;
 }
 
+function buildMediaFiles(media: string | undefined): AttachmentBuilder[] | undefined {
+  if (!media) return undefined;
+  const filePath = join(__dirname, 'data', 'media', media);
+  if (!existsSync(filePath)) {
+    console.warn(`Media file not found: ${media}`);
+    return undefined;
+  }
+  return [new AttachmentBuilder(filePath)];
+}
+
 client.on(Events.MessageCreate, (message) => void (async () => {
   if (message.author.bot || !message.inGuild()) return;
   const wasAfk = await removeAfk(database, message.author.id);
@@ -150,12 +164,16 @@ client.on(Events.MessageCreate, (message) => void (async () => {
     channelIds[key] = await resolveChannelPair(pair, member, client);
   }
   const response = resolveChannels(rule.response, channelIds);
+  const mediaFiles = rule.media ? buildMediaFiles(rule.media) : undefined;
+  const replyOptions = (content: string) => mediaFiles
+    ? { content, files: mediaFiles }
+    : { content };
   if (rule.targets) {
     const authorName = member.displayName.toLocaleLowerCase('uk-UA');
     const authorUsername = message.author.username.toLocaleLowerCase('uk-UA');
     const targetResponse = resolveTargetResponse(rule.targets, authorName, authorUsername);
     if (targetResponse) {
-      await message.reply(resolveChannels(targetResponse, channelIds));
+      await message.reply(replyOptions(resolveChannels(targetResponse, channelIds)));
       return;
     }
   }
@@ -163,11 +181,11 @@ client.on(Events.MessageCreate, (message) => void (async () => {
     const target = extractMentionTarget(message.content);
     const targetId = target ? await resolveMentionTarget(target, member) : null;
     if (targetId) {
-      await message.channel.send(formatMentionReply(`<@${targetId}>`, response));
+      await message.channel.send(replyOptions(formatMentionReply(`<@${targetId}>`, response)));
       return;
     }
   }
-  await message.reply(response);
+  await message.reply(replyOptions(response));
 })().catch((error: unknown) => console.error('Message rule handler failed', error)));
 
 async function shutdown(signal: string): Promise<void> {
