@@ -122,5 +122,5 @@ test('forgotten rule matches Ukrainian and Russian forgetting phrases', () => {
   const matched = matchRules('забувся');
   assert.ok(matched);
   assert.ok(matched.rule.response.length > 0);
-  assert.equal(matched.rule.media, 'colomoyski.mp4');
+  assert.equal(matched.rule.media, 'colomoyski.gif');
 });

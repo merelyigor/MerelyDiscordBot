@@ -141,6 +141,50 @@ function buildMediaFiles(media: string | undefined): AttachmentBuilder[] | undef
   return [new AttachmentBuilder(filePath)];
 }
 
+async function safeReply(
+  target: { reply: (options: never) => Promise<unknown> },
+  content: string,
+  mediaFiles: AttachmentBuilder[] | undefined,
+): Promise<void> {
+  try {
+    if (mediaFiles) {
+      await target.reply({ content, files: mediaFiles } as never);
+    } else {
+      await target.reply({ content } as never);
+    }
+  } catch (error: unknown) {
+    const isTooLarge = error instanceof Error && 'code' in error && (error as { code: number }).code === 40005;
+    if (isTooLarge && mediaFiles) {
+      console.warn('Media file too large, sending text only');
+      await target.reply({ content } as never);
+    } else {
+      throw error;
+    }
+  }
+}
+
+async function safeSend(
+  channel: { send: (options: never) => Promise<unknown> },
+  content: string,
+  mediaFiles: AttachmentBuilder[] | undefined,
+): Promise<void> {
+  try {
+    if (mediaFiles) {
+      await channel.send({ content, files: mediaFiles } as never);
+    } else {
+      await channel.send({ content } as never);
+    }
+  } catch (error: unknown) {
+    const isTooLarge = error instanceof Error && 'code' in error && (error as { code: number }).code === 40005;
+    if (isTooLarge && mediaFiles) {
+      console.warn('Media file too large, sending text only');
+      await channel.send({ content } as never);
+    } else {
+      throw error;
+    }
+  }
+}
+
 client.on(Events.MessageCreate, (message) => void (async () => {
   if (message.author.bot || !message.inGuild()) return;
   const wasAfk = await removeAfk(database, message.author.id);
@@ -165,15 +209,12 @@ client.on(Events.MessageCreate, (message) => void (async () => {
   }
   const response = resolveChannels(rule.response, channelIds);
   const mediaFiles = rule.media ? buildMediaFiles(rule.media) : undefined;
-  const replyOptions = (content: string) => mediaFiles
-    ? { content, files: mediaFiles }
-    : { content };
   if (rule.targets) {
     const authorName = member.displayName.toLocaleLowerCase('uk-UA');
     const authorUsername = message.author.username.toLocaleLowerCase('uk-UA');
     const targetResponse = resolveTargetResponse(rule.targets, authorName, authorUsername);
     if (targetResponse) {
-      await message.reply(replyOptions(resolveChannels(targetResponse, channelIds)));
+      await safeReply(message, resolveChannels(targetResponse, channelIds), mediaFiles);
       return;
     }
   }
@@ -181,11 +222,11 @@ client.on(Events.MessageCreate, (message) => void (async () => {
     const target = extractMentionTarget(message.content);
     const targetId = target ? await resolveMentionTarget(target, member) : null;
     if (targetId) {
-      await message.channel.send(replyOptions(formatMentionReply(`<@${targetId}>`, response)));
+      await safeSend(message.channel, formatMentionReply(`<@${targetId}>`, response), mediaFiles);
       return;
     }
   }
-  await message.reply(replyOptions(response));
+  await safeReply(message, response, mediaFiles);
 })().catch((error: unknown) => console.error('Message rule handler failed', error)));
 
 async function shutdown(signal: string): Promise<void> {
