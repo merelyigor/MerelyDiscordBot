@@ -79,7 +79,10 @@ case "$profile" in
   backend) check_rules; check_backend; check_whitespace ;;
   migration) check_rules; check_migration; check_whitespace ;;
   full) check_rules; check_migration; check_whitespace ;;
-  *) printf 'Usage: %s {preflight|docs|test <path>|backend|migration|full}\n' "$0" >&2; exit 2 ;;
+  # Headless-інспекції JetBrains: інспектор не стартує при відкритій IDE
+  # і чесно виходить кодом 2, тому щодня інспекції робить агент через MCP.
+  inspect) [ "${1:-}" = "inspect" ] && shift; exec bash scripts/inspect-code.sh "$@" ;;
+  *) printf 'Usage: %s {preflight|docs|test <path>|backend|migration|full|inspect [тека]}\n' "$0" >&2; exit 2 ;;
 esac
 
 printf '\nAgent gate passed: %s\n' "$profile"
