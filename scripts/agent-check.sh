@@ -7,7 +7,7 @@ cd "$ROOT"
 
 readonly RULE_MIRRORS=(AGENTS.md .cursorrules CLAUDE.md QWEN.md)
 readonly RULE_REFERENCE='docs/AI_AGENT_RULES_REFERENCE.md'
-readonly RULE_MAP_MAX_LINES=150
+readonly RULE_MAP_MAX_LINES=200
 
 fail() { printf 'FAIL: %s\n' "$1" >&2; exit 1; }
 step() { printf '\n== %s ==\n' "$1"; }

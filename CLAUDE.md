@@ -86,6 +86,18 @@ bash scripts/agent-check.sh full
 ## 7. Інструменти
 
 - Serena - semantic navigation/refactoring; configs, Docker, ENV і короткі файли - targeted reads (§5.1-§5.4).
+- Serena дає виграш лише на СИМВОЛЬНИХ задачах, бо повертає один символ або список
+  посилань замість файлу цілком: `get_symbols_overview`, `find_symbol`,
+  `find_referencing_symbols`, `find_declaration`, `find_implementations`,
+  `get_diagnostics_for_file` і символьні правки `replace_symbol_body`,
+  `insert_before_symbol`, `insert_after_symbol`, `rename_symbol`, `safe_delete_symbol`.
+- Через Serena НЕ читати, не шукати й не писати текст: `read_file`, `list_dir`,
+  `find_file`, `search_for_pattern`, `replace_content`, `replace_in_files`,
+  `create_text_file` і memories роблять те саме, що `rg` і звичайні читання/правки,
+  але дорожче й без переваги. `execute_shell_command` ЗАБОРОНЕНА: guardrails
+  перехоплюють лише Bash-інструмент, тому через неї руйнівна команда пройшла б повз
+  механічний захист. Без встановлених `vendor/`/`node_modules` символи не
+  резолвляться · спершу залежності, потім висновки.
 - Context7 - для external library API; встановлений `package-lock.json` має пріоритет (§5.5-§5.8).
 - JetBrains IDE (WebStorm) - MCP-сервер для інспекцій, графів викликів, мовного індексу; не замінює typecheck/lint/tests (§23).
 - Shadcn/UI і Playwright не застосовуються: проєкт не має frontend або browser surface (§5.9-§5.10).
