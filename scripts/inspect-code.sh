@@ -73,6 +73,8 @@ fi
 
 OUT_DIR="$(mktemp -d)"
 RUN_LOG="$(mktemp)"
+# shellcheck disable=SC2317  # викликається через `trap cleanup EXIT`, статичний
+# аналіз цього не бачить і вважає тіло недосяжним.
 cleanup() { rm -rf -- "$OUT_DIR" "$RUN_LOG"; }
 trap cleanup EXIT
 
