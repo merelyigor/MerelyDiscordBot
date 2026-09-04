@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'root=\"${CLAUDE_PROJECT_DIR:-$PWD}\"; guard=\"$root/../../../scripts/hooks/guard-command.sh\"; if [ -f \"$guard\" ]; then bash \"$guard\"; else exit 0; fi'",
+            "command": "bash -c 'root=\"${CLAUDE_PROJECT_DIR:-$PWD}\"; guard=\"$root/../../../scripts/hooks/guard-command.sh\"; if [ -f \"$guard\" ]; then GUARD_SCOPE=project bash \"$guard\"; else exit 0; fi'",
             "timeout": 15
           }
         ]
