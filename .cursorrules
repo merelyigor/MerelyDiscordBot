@@ -99,6 +99,7 @@ bash scripts/agent-check.sh full
   механічний захист. Без встановлених `vendor/`/`node_modules` символи не
   резолвляться · спершу залежності, потім висновки.
 - Context7 - для external library API; встановлений `package-lock.json` має пріоритет (§5.5-§5.8).
+- Скіли MCP (процедури й межі, завантажувати перед відповідною задачею): [mcp-context7](.claude/skills/mcp-context7/SKILL.md), [mcp-playwright](.claude/skills/mcp-playwright/SKILL.md), [browser-research](.claude/skills/browser-research/SKILL.md), [mcp-jetbrains](.claude/skills/mcp-jetbrains/SKILL.md).
 - JetBrains IDE (WebStorm) - MCP-сервер для інспекцій, графів викликів, мовного індексу; не замінює typecheck/lint/tests (§23).
 - Shadcn/UI і Playwright не застосовуються: проєкт не має frontend або browser surface (§5.9-§5.10).
 - Browser не потрібен; runtime перевіряється tests, Docker health, logs і Discord test guild.
