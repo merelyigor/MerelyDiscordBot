@@ -250,7 +250,7 @@ Call the Agent tool multiple times IN THE SAME RESPONSE - one call per chunk. Th
 Concrete example for 3 chunks:
 ```
 [Agent tool call 1: files 1-15]
-[Agent tool call 2: files 16-30]  
+[Agent tool call 2: files 16-30]
 [Agent tool call 3: files 31-45]
 ```
 All three in one message. Not three separate messages.
@@ -1407,7 +1407,7 @@ Replace `URL` with the actual URL, `AUTHOR` with the user's name if provided, `C
 
 Supported URL types (auto-detected):
 - Twitter/X → fetched via oEmbed, saved as `.md` with tweet text and author
-- arXiv → abstract + metadata saved as `.md`  
+- arXiv → abstract + metadata saved as `.md`
 - YouTube / video URLs → audio downloaded locally via `yt-dlp`; transcript generated on the next build/update (requires local `yt-dlp`, `ffmpeg`, and `faster-whisper-ts`)
 - PDF → downloaded as `.pdf`
 - Images (.png/.jpg/.webp) → downloaded, Claude vision extracts on next run
