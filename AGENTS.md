@@ -110,6 +110,9 @@ bash scripts/agent-check.sh full
   про це прямо й іти через `rg` + targeted reads. Граф не є джерелом істини про код:
   після змін він стейл, і це називати прямо, а причину підтверджувати кодом або логом.
   Процедура, побудова й межі — скіл [graphify](.claude/skills/graphify/SKILL.md).
+- Graphify · механіка: `graph.json` у Git НЕ тримаємо (перебудова 1.7-7 с), у Git лише
+  `GRAPH_REPORT.md`. Хук на `Read|Glob` сам нагадує про граф і про `needs_update`,
+  а git-хуки після коміта позначають граф стейлом і перебудовують його у фоні.
 - JetBrains IDE (WebStorm) - MCP-сервер для інспекцій, графів викликів, мовного індексу; не замінює typecheck/lint/tests (§23).
 - Shadcn/UI і Playwright не застосовуються: проєкт не має frontend або browser surface (§5.9-§5.10).
 - Browser не потрібен; runtime перевіряється tests, Docker health, logs і Discord test guild.

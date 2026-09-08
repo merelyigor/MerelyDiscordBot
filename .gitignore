@@ -17,5 +17,4 @@ coverage/
 # відновлюється `graphify studio export`), `branch.json`/`worktree.json`/
 # `needs_update` (стан конкретного робочого дерева, який ламає портативність).
 .graphify/*
-!.graphify/graph.json
 !.graphify/GRAPH_REPORT.md

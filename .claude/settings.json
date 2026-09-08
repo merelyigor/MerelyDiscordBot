@@ -10,6 +10,16 @@
             "timeout": 15
           }
         ]
+      },
+      {
+        "matcher": "Read|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f .graphify/graph.json ]; then if [ -f .graphify/needs_update ]; then printf '%s' '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",''\"additionalContext\":\"graphify: граф є, але позначений needs_update · перебудуй (graphify extract . --scope tracked --no-description --no-label) або скажи прямо, що відповідь спирається на застарілий граф.\"}}'; else printf '%s' '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",''\"additionalContext\":\"graphify: для питань про структуру спершу graphify query/path/explain, а не читання файлів по одному.\"}}'; fi; fi; exit 0",
+            "timeout": 10
+          }
+        ]
       }
     ]
   }
