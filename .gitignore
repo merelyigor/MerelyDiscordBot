@@ -16,8 +16,6 @@ coverage/
 # машинозалежним станом: `cache/` (SHA256-кеш), `studio/` (прегенерована SPA,
 # відновлюється `graphify studio export`), `branch.json`/`worktree.json`/
 # `needs_update` (стан конкретного робочого дерева, який ламає портативність).
-.graphify/cache/
-.graphify/studio/
-.graphify/branch.json
-.graphify/worktree.json
-.graphify/needs_update
+.graphify/*
+!.graphify/graph.json
+!.graphify/GRAPH_REPORT.md
