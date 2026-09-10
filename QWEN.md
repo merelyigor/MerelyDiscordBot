@@ -102,8 +102,8 @@ bash scripts/agent-check.sh full
 - Скіли MCP (процедури й межі, завантажувати перед відповідною задачею): [mcp-context7](.claude/skills/mcp-context7/SKILL.md), [mcp-playwright](.claude/skills/mcp-playwright/SKILL.md), [browser-research](.claude/skills/browser-research/SKILL.md), [mcp-jetbrains](.claude/skills/mcp-jetbrains/SKILL.md).
 - Graphify (knowledge graph) · коли САМЕ застосовувати: питання про структуру —
   «як це працює», «що з чим звʼязано», «де це взагалі реалізовано», «що зламається,
-  якщо змінити X». Тоді спершу `graphify query "<питання>"`, `graphify path "<A>" "<B>"`
-  або `graphify explain "<вузол>"`, і лише потім широкий `rg` чи читання файлів цілком.
+  якщо змінити X». Тоді спершу `graphify query "питання"`, `graphify path "A" "B"`
+  або `graphify explain "вузол"`, і лише потім широкий `rg` чи читання файлів цілком.
 - Graphify · коли НЕ застосовувати: точкова правка у відомому файлі; конфіги, Docker,
   Nginx, bash, `.env`, YAML; питання про поведінку в рантаймі (там логи й тести).
   Немає `.graphify/graph.json` у цьому наборі — граф не будувати «про запас»: сказати
@@ -111,8 +111,14 @@ bash scripts/agent-check.sh full
   після змін він стейл, і це називати прямо, а причину підтверджувати кодом або логом.
   Процедура, побудова й межі — скіл [graphify](.claude/skills/graphify/SKILL.md).
 - Graphify · механіка: `graph.json` у Git НЕ тримаємо (перебудова 1.7-7 с), у Git лише
-  `GRAPH_REPORT.md`. Хук на `Read|Glob` сам нагадує про граф і про `needs_update`,
+  `.graphify/GRAPH_REPORT.md`. Хук на `Read|Glob` сам нагадує про граф і про `needs_update`,
   а git-хуки після коміта позначають граф стейлом і перебудовують його у фоні.
+- Знайшов дефект — запропонуй перевірку в CI [MUST]: якщо баг можна було зловити
+  машиною (розрив між конфігом і реальністю, порядок кроків, забута змінна, зламаний
+  формат), у тій самій задачі або додай перевірку в
+  CI інфри (`.github/workflows/ci-quality.yml`) або власний гейт, або назви в `## Що далі`
+  рядком `[потрібно]`, чому саме її не додано. Правило «наступного разу згадаю» не
+  працює: перевіряє гейт, а не пам'ять.
 - JetBrains IDE (WebStorm) - MCP-сервер для інспекцій, графів викликів, мовного індексу; не замінює typecheck/lint/tests (§23).
 - Shadcn/UI і Playwright не застосовуються: проєкт не має frontend або browser surface (§5.9-§5.10).
 - Browser не потрібен; runtime перевіряється tests, Docker health, logs і Discord test guild.
