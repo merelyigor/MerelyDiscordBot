@@ -119,6 +119,11 @@ bash scripts/agent-check.sh full
   CI інфри (`.github/workflows/ci-quality.yml`) або власний гейт, або назви в `## Що далі`
   рядком `[потрібно]`, чому саме її не додано. Правило «наступного разу згадаю» не
   працює: перевіряє гейт, а не пам'ять.
+- Після пушу або деплою перевіряти CI [MUST]: `CI · Якість (GitHub runner)` — це
+  перевірки на ранері GitHub, `Прод · …` — робота на сервері. Дивитись обидва:
+  `gh run list --workflow=ci-quality.yml --limit 1` і `gh run list --limit 3`,
+  а червоний прогін розбирати `gh run view <id> --log-failed`. Прийшов власник із
+  проблемою сервера — почати з цього ж, а не з припущень.
 - JetBrains IDE (WebStorm) - MCP-сервер для інспекцій, графів викликів, мовного індексу; не замінює typecheck/lint/tests (§23).
 - Shadcn/UI і Playwright не застосовуються: проєкт не має frontend або browser surface (§5.9-§5.10).
 - Browser не потрібен; runtime перевіряється tests, Docker health, logs і Discord test guild.
