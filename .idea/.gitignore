@@ -6,3 +6,9 @@
 # Datasource local storage ignored files
 /datasources.xml
 /datasources/
+
+# Структура data source потрібна всім, хто відкриває проєкт, тому вона у Git.
+# Правило вище (`/datasources.xml`) ловить і наш `dataSources.xml`, бо на macOS
+# git порівнює шляхи без урахування регістру (core.ignorecase=true).
+# Credentials лишаються в `dataSources.local.xml` і НЕ комітяться.
+!/dataSources.xml

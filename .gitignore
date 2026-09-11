@@ -18,3 +18,10 @@ coverage/
 # `needs_update` (стан конкретного робочого дерева, який ламає портативність).
 .graphify/*
 !.graphify/GRAPH_REPORT.md
+
+# Data source для IDE: структура підключення (хост, порт, база, користувач) є
+# спільною для всіх, хто працює з проєктом, тому вона у Git. Credentials JetBrains
+# тримає окремо в .idea/dataSources.local.xml · цей файл лишається ігнорованим.
+!/.idea/
+/.idea/*
+!/.idea/dataSources.xml
