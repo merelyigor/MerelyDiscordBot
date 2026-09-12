@@ -32,7 +32,7 @@ check_rules() {
   # `core.hooksPath` не версіонується git-ом за задумом (клон не має виконувати чужі
   # хуки), тому після свіжого клону хук існує файлом, але не працює. Ловимо тут;
   # вмикається однією командою, зокрема `bash ../../../scripts/enable-project-hooks.sh`.
-  if [ -f .githooks/commit-msg ]; then
+  if [ -f .githooks/commit-msg ] && [ -z "${CI:-}" ]; then
     local hooks_path
     hooks_path="$(git config core.hooksPath 2>/dev/null || true)"
     if [ "$hooks_path" != '.githooks' ]; then
