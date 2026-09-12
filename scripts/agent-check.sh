@@ -7,7 +7,13 @@ cd "$ROOT"
 
 readonly RULE_MIRRORS=(AGENTS.md .cursorrules CLAUDE.md QWEN.md)
 readonly RULE_REFERENCE='docs/AI_AGENT_RULES_REFERENCE.md'
-readonly RULE_MAP_MAX_LINES=200
+# Політика розміру карти єдина для всіх наборів (рішення власника 2026-09-12):
+# ціль 200 рядків, до 300 · погано, але допустимо, 351+ · стоп. Жорсткий провал на
+# 201 рядку робив масовий розкат правил небезпечним: набір із найтіснішою картою
+# ламався мовчки й виявлявся лише тоді, коли хтось відкривав репозиторій.
+readonly RULE_MAP_TARGET_LINES=200
+readonly RULE_MAP_SOFT_LINES=300
+readonly RULE_MAP_MAX_LINES=350
 
 fail() { printf 'FAIL: %s\n' "$1" >&2; exit 1; }
 step() { printf '\n== %s ==\n' "$1"; }
@@ -23,8 +29,17 @@ check_rules() {
     cmp -s AGENTS.md "$mirror" || fail "$mirror differs from AGENTS.md"
   done
   test -f "$RULE_REFERENCE" || fail "missing $RULE_REFERENCE"
-  test "$(wc -l < AGENTS.md | tr -d ' ')" -le "$RULE_MAP_MAX_LINES" \
-    || fail "AGENTS.md exceeds $RULE_MAP_MAX_LINES lines"
+  local map_lines
+  map_lines="$(wc -l < AGENTS.md | tr -d ' ')"
+  if [ "$map_lines" -gt "$RULE_MAP_MAX_LINES" ]; then
+    fail "AGENTS.md розрісся до $map_lines рядків (стоп $RULE_MAP_MAX_LINES, ціль $RULE_MAP_TARGET_LINES)"
+  elif [ "$map_lines" -gt "$RULE_MAP_SOFT_LINES" ]; then
+    printf 'WARNING: AGENTS.md має %s рядків · червона зона понад %s, скорочувати\n' \
+      "$map_lines" "$RULE_MAP_SOFT_LINES" >&2
+  elif [ "$map_lines" -gt "$RULE_MAP_TARGET_LINES" ]; then
+    printf 'WARNING: AGENTS.md має %s рядків · понад ціль %s, ще допустимо\n' \
+      "$map_lines" "$RULE_MAP_TARGET_LINES" >&2
+  fi
   # Вміст у зворотних лапках це синтаксис команди (`gh run view <id> --log-failed`),
   # а не незаповнений плейсхолдер шаблона. Без цього вирізання гейт падав на
   # власному правилі про перевірку CI і блокував будь-яку роботу в репозиторії.
