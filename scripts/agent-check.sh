@@ -23,8 +23,22 @@ check_rules() {
     cmp -s AGENTS.md "$mirror" || fail "$mirror differs from AGENTS.md"
   done
   test -f "$RULE_REFERENCE" || fail "missing $RULE_REFERENCE"
-  test "$(wc -l < AGENTS.md | tr -d ' ')" -le "$RULE_MAP_MAX_LINES" || fail 'AGENTS.md exceeds 150 lines'
-  if grep -RInE '<[A-Za-z][^>]*>|PROJECT_NAME_HERE|TODO_RULE' "${RULE_MIRRORS[@]}" "$RULE_REFERENCE"; then
+  test "$(wc -l < AGENTS.md | tr -d ' ')" -le "$RULE_MAP_MAX_LINES" \
+    || fail "AGENTS.md exceeds $RULE_MAP_MAX_LINES lines"
+  # Вміст у зворотних лапках це синтаксис команди (`gh run view <id> --log-failed`),
+  # а не незаповнений плейсхолдер шаблона. Без цього вирізання гейт падав на
+  # власному правилі про перевірку CI і блокував будь-яку роботу в репозиторії.
+  local placeholder_hits file
+  placeholder_hits=""
+  for file in "${RULE_MIRRORS[@]}" "$RULE_REFERENCE"; do
+    placeholder_hits+="$(
+      sed -E 's/`[^`]*`//g' "$file" \
+        | grep -nE '<[A-Za-z][^>]*>|PROJECT_NAME_HERE|TODO_RULE' \
+        | sed "s|^|${file}:|" || true
+    )"
+  done
+  if [ -n "$placeholder_hits" ]; then
+    printf '%s\n' "$placeholder_hits"
     fail 'unresolved rule placeholder found'
   fi
   local duplicate
