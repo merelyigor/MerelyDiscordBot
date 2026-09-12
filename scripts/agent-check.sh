@@ -28,6 +28,17 @@ check_rules() {
   for mirror in "${RULE_MIRRORS[@]:1}"; do
     cmp -s AGENTS.md "$mirror" || fail "$mirror differs from AGENTS.md"
   done
+
+  # `core.hooksPath` не версіонується git-ом за задумом (клон не має виконувати чужі
+  # хуки), тому після свіжого клону хук існує файлом, але не працює. Ловимо тут;
+  # вмикається однією командою, зокрема `bash ../../../scripts/enable-project-hooks.sh`.
+  if [ -f .githooks/commit-msg ]; then
+    local hooks_path
+    hooks_path="$(git config core.hooksPath 2>/dev/null || true)"
+    if [ "$hooks_path" != '.githooks' ]; then
+      fail "core.hooksPath='${hooks_path:-не задано}' замість '.githooks' · увімкни: git config core.hooksPath .githooks"
+    fi
+  fi
   test -f "$RULE_REFERENCE" || fail "missing $RULE_REFERENCE"
   local map_lines
   map_lines="$(wc -l < AGENTS.md | tr -d ' ')"
