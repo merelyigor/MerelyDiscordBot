@@ -1,0 +1,43 @@
+# Конфіг Codex для цього набору правил. Розкочений з інфри · еталон і причина в
+# `merely-server-infra/.codex/config.toml`.
+#
+# ГОЛОВНЕ ТУТ · guardrails. У Codex немає нативного deny-механізму, а глобально
+# стоять `approval_policy="never"` і `sandbox_mode="danger-full-access"`, тому без
+# цього хука руйнівні команди в Codex-сесії набору не блокує ніщо · на відміну від
+# Claude, де хук стоїть у кожному наборі. Патерни спільні:
+# `scripts/hooks/dangerous-commands.txt` інфри, режим `GUARD_SCOPE=project`.
+#
+# Шлях шукається у двох місцях, бо `git rev-parse --show-toplevel` дає корінь
+# проєкту у вкладеному репозиторії й корінь інфри там, де набір лежить у ній самій.
+# Якщо скрипта немає (репозиторій відкритий поза деревом інфри), хук виходить нулем ·
+# інакше кожна команда падала б на відсутньому файлі.
+
+[projects."."]
+trust_level = "trusted"
+
+[mcp_servers.phpstorm]
+url = "http://127.0.0.1:64444/stream"
+
+[[hooks.PreToolUse]]
+matcher = "^shell$"
+
+[[hooks.PreToolUse.hooks]]
+type = "command"
+command = "bash -c 'root=\"$(git rev-parse --show-toplevel)\"; for guard in \"$root/scripts/hooks/guard-command.sh\" \"$root/../../../scripts/hooks/guard-command.sh\"; do [ -f \"$guard\" ] && exec env GUARD_SCOPE=project bash \"$guard\"; done; exit 0'"
+timeout = 15
+statusMessage = "Перевірка команди по guardrails інфри"
+
+[[hooks.PostToolUse]]
+matcher = "^apply_patch$"
+
+[[hooks.PostToolUse.hooks]]
+type = "command"
+command = "bash -c 'root=\"$(git rev-parse --show-toplevel)\"; for guard in \"$root/scripts/hooks/validate-docs-change.sh\" \"$root/../../../scripts/hooks/validate-docs-change.sh\"; do [ -f \"$guard\" ] && exec env GUARD_SCOPE=project bash \"$guard\"; done; exit 0'"
+timeout = 30
+statusMessage = "Перевірка markdown-посилань і rule-файлів"
+
+[[hooks.PostToolUse.hooks]]
+type = "command"
+command = "bash -c 'root=\"$(git rev-parse --show-toplevel)\"; for guard in \"$root/scripts/hooks/validate-shellcheck.sh\" \"$root/../../../scripts/hooks/validate-shellcheck.sh\"; do [ -f \"$guard\" ] && exec env GUARD_SCOPE=project bash \"$guard\"; done; exit 0'"
+timeout = 60
+statusMessage = "Перевірка ShellCheck (error+warning)"

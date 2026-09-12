@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+#
+# Мінімальний спільний commit-msg для наборів правил.
+#
+# НАВІЩО. До 2026-09-13 хуки були лише у трьох репозиторіях із одинадцяти. У решті
+# конвенцію повідомлення, зростання версії та заборону AI-атрибуції не перевіряло
+# НІЩО: ні хук, ні CI (своїх workflow там теж немає). Тобто правило трималось на
+# памʼяті моделі, а саме цього правила й уникають: перевіряє гейт, а не памʼять.
+#
+# Що перевіряється:
+#   1. У повідомленні немає атрибуції AI-інструмента (Co-Authored-By з моделлю,
+#      «Generated with …», «🤖»). Автор комітів · власник.
+#   2. Якщо перший рядок має форму `Версія: X.Y.Z`, версія мусить ЗРОСТАТИ відносно
+#      попереднього коміта. Репозиторії з вільною темою це не зачіпає.
+#
+# Amend визначається фактом, а не збігом чисел: git запускає хук напряму, тому
+# `$PPID` це сам батьківський процес, і прапорець видно в його командному рядку.
+# Раніше «рівна версія + менша версія діда» приймалась за amend і пропускала два
+# різні коміти під однією версією (bdo_ua_translate, 5.0.9, 2026-09-12).
+
+set -uo pipefail
+
+MSG_FILE="${1:?commit-msg: не передано файл повідомлення}"
+fail=0
+
+say() { printf 'commit-msg: %s\n' "$1" >&2; }
+
+first="$(sed -n '1p' "$MSG_FILE")"
+
+# Технічні коміти git формату не мають і мати не можуть.
+case "$first" in
+    Merge\ *|Revert\ *|fixup!\ *|squash!\ *|amend!\ *) exit 0 ;;
+esac
+
+if grep -qiE 'co-authored-by:.*(claude|codex|gpt|copilot|cursor|opencode|assistant)' "$MSG_FILE" ||
+    grep -qiE 'generated with|🤖' "$MSG_FILE"; then
+    say 'у повідомленні є атрибуція AI-інструмента · автор комітів власник, приберіть трейлер'
+    fail=1
+fi
+
+amend_flag() {
+    local args
+    args="$(ps -o args= -p "$PPID" 2>/dev/null)" || return 2
+    [ -n "$args" ] || return 2
+    case "$args" in
+        *' --amend'*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+version_num() {
+    printf '%s' "$1" | sed -nE 's/^Версія: ([0-9]+)\.([0-9]+)\.([0-9]+).*/\1 \2 \3/p' |
+        awk '{ printf "%d", $1 * 1000000 + $2 * 1000 + $3 }'
+}
+
+if printf '%s' "$first" | grep -qE '^Версія: [0-9]+\.[0-9]+\.[0-9]+'; then
+    new_num="$(version_num "$first")"
+    prev_subject="$(git log -1 --format='%s' 2>/dev/null || true)"
+    prev_num="$(version_num "$prev_subject")"
+
+    if [ -z "$prev_num" ]; then
+        say "попередню версію визначити не вдалось · перевірку зростання пропущено"
+    elif [ "$new_num" -gt "$prev_num" ]; then
+        :
+    else
+        amend_flag
+        amend_state=$?
+        if [ "$amend_state" -eq 0 ]; then
+            say "версія та сама, що в HEAD · це amend, пропускаю"
+        else
+            say "версія не зросла: у HEAD «${prev_subject}», нова «${first}»"
+            fail=1
+        fi
+    fi
+fi
+
+exit "$fail"

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "oraios-serena": {
+      "type": "remote",
+      "url": "http://127.0.0.1:8020/mcp",
+      "enabled": true
+    },
+    "playwright": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@playwright/mcp@latest",
+        "--isolated",
+        "--browser",
+        "chrome"
+      ],
+      "enabled": true
+    }
+  },
+  "permission": {
+    "bash": {
+      "*prisma migrate reset*": "deny",
+      "*prisma db push --force-reset*": "deny",
+      "*DROP TABLE*": "deny",
+      "*TRUNCATE*": "deny"
+    },
+    "edit": {
+      "*/docker/.env": "deny"
+    }
+  },
+  "instructions": [
+    ".opencode/critical-rules.md"
+  ]
+}
