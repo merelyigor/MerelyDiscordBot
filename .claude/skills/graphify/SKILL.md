@@ -6,6 +6,12 @@ trigger: /graphify
 
 # /graphify
 
+> **ЕТАЛОН · правити лише тут.** Цей файл живе в репозиторії інфри
+> (`merely-server-infra/.claude/skills/<назва>/SKILL.md`), а в кожному наборі правил лежить
+> його байт-ідентична копія. Потрібна зміна · правиться ЦЕЙ файл, потім копії
+> синхронізуються в усіх наборах тим самим комітом. Правка в копії проєкту валить спільну
+> перевірку наборів і губиться при наступній синхронізації.
+
 Turn any folder of files into a navigable knowledge graph with community detection, an honest audit trail, and three outputs: a static Ontology Studio, GraphRAG-ready JSON, and a plain-language GRAPH_REPORT.md.
 
 ## Usage
