@@ -105,7 +105,7 @@
 - §12.3 Значущу user/integration behavior зміну документувати пропорційно її впливу.
 
 ## §13 Git і destructive actions
-- §13.1 `git commit`, `git push`, tag, rebase, force або history rewrite — **заборонено за замовчуванням**. Дозволено ТІЛЬКИ якщо власник прямо попросив у поточному повідомленні (напр. «закоміть», «комітни», «push», «запуш»). Агент НІКОЛИ не робить commit/push самостійно навіть після виконаної роботи.
+- §13.1 `git commit` і `git push` агент робить сам: за конвенцією повідомлення цього репозиторію, стейджачи лише свої шляхи, після гейта з кодом 0. Force-push, rebase, теги й будь-яке переписування історії — лише за разовим явним дозволом (рішення власника 2026-09-18).
 - §13.2 Не змішувати rule change, application refactor та unrelated infra changes в одному commit.
 - §13.3 Не видаляти files/data та не виконувати destructive DB commands без дозволу.
 - §13.4 Перед генерацією commit message прочитати [`COMMIT-MESSAGE-PROMPT.md`](COMMIT-MESSAGE-PROMPT.md) і точно виконати його формат, version rules та обмеження.
