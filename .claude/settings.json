@@ -1,4 +1,12 @@
 {
+  "claudeMdExcludes": [
+    "**/merely-server-infra/CLAUDE.md",
+    "**/merely-server-infra/CLAUDE.local.md",
+    "**/merely-server-infra/AGENTS.md",
+    "**/merely-server-infra/.claude/CLAUDE.md",
+    "**/merely-server-infra/.claude/AGENTS.md",
+    "**/merely-server-infra/.claude/rules/**"
+  ],
   "hooks": {
     "PreToolUse": [
       {
