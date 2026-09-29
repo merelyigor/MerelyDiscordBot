@@ -38,15 +38,18 @@ tool schemas, з'їдає контекст і провокує хибні tool c
 - **Claude Code**: сервер `playwright` зареєстрований у `.mcp.json` цього репозиторію,
   тому в сесії з коренем інфри інструменти доступні одразу. Ціну називаємо прямо: це
   ~20 tool schemas у контексті кожної сесії. Коли контекст дорожчий за зручність —
-  делегувати задачу агентові `browser-test` (`~/.claude/agents/browser-test.md`), який
-  описує сервер inline у власному frontmatter, або вимкнути сервер через
+  віддати браузерну перевірку за сценарієм помічнику `python3 scripts/executor/exec.py scout <task.md>` (Codex, лише читання,
+  `playwright` вмикається на прогін); у проєкті без харнесу — `codex exec -m gpt-6-luna
+  -s read-only -c 'mcp_servers.playwright.enabled=true'
+  -c 'mcp_servers.playwright.default_tools_approval_mode="approve"' …`. Агента
+  `browser-test` більше немає (рішення власника 2026-09-29), або вимкнути сервер через
   `disabledMcpjsonServers` у `~/.claude.json`, не правлячи файл репозиторію.
 - **OpenCode**: per-agent MCP немає (у схемі `AgentConfig` є лише `tools`), тому гейт
   двоступеневий: `mcp.playwright.enabled` у `~/.config/opencode/opencode.jsonc` (або в
-  `opencode.json` проєкту) вмикається на час UI-роботи, а інструменти `playwright*`
-  дозволені тільки агентові `browser-test`
-  (`~/.config/opencode/agent/browser-test.md`); `build`/`plan`/`general`/`explore`
-  мають `"playwright*": false`. Кожен новий не-browser агент додає такий самий deny.
+  `opencode.json` проєкту) вмикається на час UI-роботи, але інструменти `playwright*`
+  не дозволені жодному агенту OpenCode: `build`/`plan`/`general`/`explore` мають
+  `"playwright*": false`, і кожен новий агент додає такий самий deny. Браузер за
+  сценарієм — через помічника Codex (пункт Claude Code вище).
 - **Codex**: per-agent scoping немає взагалі. `[mcp_servers.playwright] enabled = false`
   поза UI-задачею; увімкнути на час роботи й повернути `false` після неї.
 

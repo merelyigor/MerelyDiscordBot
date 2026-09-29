@@ -108,6 +108,8 @@ mkdir -p .graphify
 
 If the install succeeds, print nothing and move straight to Step 2.
 
+The `node -e` blocks below `require('@sentropic/graphify')`; a global install is not on Node's module path, so start every such shell call with `export NODE_PATH="$(npm root -g)"`.
+
 ### Step 2 - Detect files
 
 ```bash
@@ -158,7 +160,7 @@ fs.writeFileSync('.graphify/.graphify_detect_semantic.json', JSON.stringify(sema
 fs.writeFileSync('.graphify/.graphify_transcripts.json', JSON.stringify(transcriptPaths, null, 2));
 fs.writeFileSync('.graphify/.graphify_pdf_ocr.json', JSON.stringify(pdfArtifacts, null, 2));
 console.log('Prepared semantic inputs: ' + transcriptPaths.length + ' transcript(s), ' + pdfArtifacts.filter((item) => item.markdownPath).length + ' PDF sidecar(s)');
-)().catch((error) => {
+})().catch((error) => {
   console.error(error instanceof Error ? error.message : String(error));
   process.exit(1);
 });
@@ -171,17 +173,17 @@ After semantic preparation:
 
 ### Step 3 - Extract entities and relationships
 
-**Before starting:** note whether `--mode deep` and `--directed` were given. You must pass `DEEP_MODE=true` to every subagent in Step B2 if it was. Track both flags from the original invocation - do not lose them.
+**Before starting:** note whether `--mode deep` and `--directed` were given. You must pass `DEEP_MODE=true` to every extraction task in Step B2 if it was. Track both flags from the original invocation - do not lose them.
 
-This step has two parts: **structural extraction** (deterministic, free) and **semantic extraction** (Claude, costs tokens).
+This step has two parts: **structural extraction** (deterministic, free) and **semantic extraction** (LLM executors, costs tokens).
 
-**Run Part A (AST) and Part B (semantic) in parallel. Dispatch all semantic subagents AND start AST extraction in the same message. Both can run simultaneously since they operate on different file types. Merge results in Part C as before.**
+**Run Part A (AST) and Part B (semantic) in parallel. Dispatch all semantic extraction tasks AND start AST extraction in the same message. Both can run simultaneously since they operate on different file types. Merge results in Part C as before.**
 
-Note: Parallelizing AST + semantic saves 5-15s on large corpora. AST is deterministic and fast; start it while subagents are processing docs/papers.
+Note: Parallelizing AST + semantic saves 5-15s on large corpora. AST is deterministic and fast; start it while extraction tasks are processing docs/papers.
 
 #### Part A - Structural extraction for code files
 
-For any code files detected, run AST extraction in parallel with Part B subagents:
+For any code files detected, run AST extraction in parallel with Part B extraction tasks:
 
 ```bash
 node -e "(async () => {
@@ -205,21 +207,21 @@ if (codeFiles.length > 0) {
 })()"
 ```
 
-#### Part B - Semantic extraction (parallel subagents)
+#### Part B - Semantic extraction (parallel executors)
 
-**Fast path:** If semantic detection found zero docs, papers, images, and transcripts (code-only corpus), skip Part B entirely and go straight to Part C. AST handles code - there is nothing for semantic subagents to do.
+**Fast path:** If semantic detection found zero docs, papers, images, and transcripts (code-only corpus), skip Part B entirely and go straight to Part C. AST handles code - there is nothing for semantic extraction to do.
 
-**MANDATORY: You MUST use the Agent tool here. Reading files yourself one-by-one is forbidden - it is 5-10x slower. If you do not use the Agent tool you are doing this wrong.**
+**Executors — owner rule (2026-09-29).** Chunks go to cheap executors in this order; move to the next only when the previous one is unavailable: (1) Codex `gpt-6-luna` read-only helper; (2) OpenCode worker `opencode-go/deepseek-v4.1-flash`; (3) built-in subagents of the current client — last resort, and say in chat which executor failed and why. Reading chunk files yourself one by one is still forbidden.
 
-Before dispatching subagents, print a timing estimate:
+Before dispatching extraction tasks, print a timing estimate:
 - Load `total_words` and file counts from `.graphify/.graphify_detect.json`
-- Estimate agents needed: `ceil(uncached_non_code_files / 22)` (chunk size is 20-25)
-- Estimate time: ~45s per agent batch (they run in parallel, so total ≈ 45s × ceil(agents/parallel_limit))
-- Print: "Semantic extraction: ~N files → X agents, estimated ~Ys"
+- Estimate chunks needed: `ceil(uncached_non_code_files / 22)` (chunk size is 20-25)
+- Estimate time: ~45s per chunk batch (up to 4 run in parallel, so total ≈ 45s × ceil(chunks/4))
+- Print: "Semantic extraction: ~N files → X chunks, estimated ~Ys"
 
 **Step B0 - Check extraction cache first**
 
-Before dispatching any subagents, check which files already have cached extraction results:
+Before dispatching any extraction tasks, check which files already have cached extraction results:
 
 ```bash
 node -e "
@@ -243,13 +245,41 @@ console.log(\`Cache: \${allFiles.length - uncached.length} files hit, \${uncache
 "
 ```
 
-Only dispatch subagents for files listed in `.graphify/.graphify_uncached.txt`. If all files are cached, skip to Part C directly.
+Only dispatch extraction tasks for files listed in `.graphify/.graphify_uncached.txt`. If all files are cached, skip to Part C directly.
 
 **Step B1 - Split into chunks**
 
 Load files from `.graphify/.graphify_uncached.txt`. Split into chunks of 20-25 files each. Each image gets its own chunk (vision needs separate context). PDF sidecar Markdown can reference extracted image artifacts under `.graphify/converted/pdf/*_images/`; when those images contain diagrams, tables, captions, or embedded text that carry meaning, include them as image chunks or describe the delegated OCR/vision output with provenance back to the source PDF. When splitting, group files from the same directory together so related artifacts land in the same chunk and cross-file relationships are more likely to be extracted.
 
-**Step B2 - Dispatch ALL subagents in a single message**
+**Step B2 - Dispatch chunks to executors**
+
+Every chunk gets the same extraction prompt (the block below). Write it to `.graphify/chunks/prompt_<N>.md` (substitute FILE_LIST, CHUNK_NUM, TOTAL_CHUNKS, and DEEP_MODE); the result of chunk N is the JSON file `.graphify/chunks/chunk_<N>.json`. Start all chunks of one executor at once (up to 4 in parallel), then wait for all of them.
+
+Commands without the harness (checked 2026-09-29: codex-cli 0.159.0, opencode 1.18.30). MCP servers are switched off for the run only — without that OpenCode hangs at MCP startup, and Serena writes `.serena/` into the project; global configs stay untouched:
+```bash
+# CODEX_CMD — chunk N; image chunk: add `-i <image>` before `--`
+NOMCP=(); for s in $(python3 -c "import os,tomllib; p=os.path.join(os.environ.get('CODEX_HOME') or os.path.expanduser('~/.codex'),'config.toml'); print('\n'.join((tomllib.load(open(p,'rb')).get('mcp_servers') or {}).keys()))" 2>/dev/null); do NOMCP+=(-c "mcp_servers.$s.enabled=false"); done
+codex exec "${NOMCP[@]}" -m gpt-6-luna -c model_reasoning_effort="high" -s read-only --ephemeral --skip-git-repo-check -o .graphify/chunks/chunk_<N>.json -C . -- "$(cat .graphify/chunks/prompt_<N>.md)" < /dev/null > .graphify/chunks/log_<N>.txt 2>&1 &
+
+# OPENCODE_CMD — chunk N (text only)
+OC_CONFIG=$(opencode debug config < /dev/null 2>/dev/null | node -e "let t='';process.stdin.on('data',d=>t+=d).on('end',()=>{const mcp={};try{for(const k of Object.keys(JSON.parse(t.slice(t.indexOf('{'))).mcp||{}))mcp[k]={enabled:false}}catch(e){}console.log(JSON.stringify({mcp,permission:{edit:'deny',bash:'deny',webfetch:'deny'}}))})")
+OPENCODE_CONFIG_CONTENT="$OC_CONFIG" opencode run -m opencode-go/deepseek-v4.1-flash --dir . "$(cat .graphify/chunks/prompt_<N>.md)" < /dev/null > .graphify/chunks/chunk_<N>.json 2>/dev/null &
+
+wait   # after starting up to 4 chunks
+```
+Run each block in one shell call (the arrays and variables must survive until the `codex`/`opencode` lines). A chunk failed when its `chunk_<N>.json` is missing or is not JSON; the reason is in `log_<N>.txt`.
+
+**(1) Codex `gpt-6-luna` (read-only helper) — default for every chunk.**
+- Project has `scripts/executor/exec.py` (executor harness): one task per chunk `.executor/tasks/graphify-chunk-<N>.md` with header `title: graphify-chunk-<N>`, `allow: []`, `output: raw`, body — the chunk prompt. Run `EXECUTOR_MAX_PARALLEL_SCOUT=4 python3 scripts/executor/exec.py scout .executor/tasks/graphify-chunk-<N>.md --detach` for all chunks, then `python3 scripts/executor/exec.py wait <run-id>` for each until the code is not 4. The JSON is in the file from the summary line `output:`; copy it to `.graphify/chunks/chunk_<N>.json`. Code 6 (`CODEX_UPDATE`) — run the printed update command and retry once; code 5 (`SELF`, the session itself runs on this model) — go to (2).
+- No harness: `CODEX_CMD`, up to 4 as background shell jobs (`&`, then `wait`).
+- Image chunks (the harness has no image flag): always `CODEX_CMD` with `-i <image>` before `--`. If Codex is unavailable, image chunks go to (3) — the OpenCode worker gets no images.
+- Codex is **unavailable** when there is no `codex` binary, it is not logged in, or the model is still `not supported` after an update. Without the harness: `log_<N>.txt` says the model is not supported — update Codex CLI (`brew upgrade --cask codex` if `brew list --cask codex` succeeds, otherwise `npm install -g @openai/codex@latest`) and retry once.
+
+**(2) OpenCode `opencode-go/deepseek-v4.1-flash` (worker) — text chunks only, when (1) is unavailable.**
+- Harness: a worker task `run` with `allow: [.graphify/chunks/chunk_<N>.json]`, body — the chunk prompt plus "Write exactly this JSON to `.graphify/chunks/chunk_<N>.json`, nothing else", check `node -e "JSON.parse(require('fs').readFileSync('.graphify/chunks/chunk_<N>.json','utf-8'))"`.
+- No harness: `OPENCODE_CMD`.
+
+**(3) Built-in subagents of the current client — only if (1) and (2) are unavailable.** Say in chat which executor failed and why, then:
 
 Call the Agent tool multiple times IN THE SAME RESPONSE - one call per chunk. This is the only way they run in parallel. If you make one Agent call, wait, then make another, you are doing it sequentially and defeating the purpose.
 
@@ -261,10 +291,10 @@ Concrete example for 3 chunks:
 ```
 All three in one message. Not three separate messages.
 
-Each subagent receives this exact prompt (substitute FILE_LIST, CHUNK_NUM, TOTAL_CHUNKS, and DEEP_MODE):
+The extraction prompt (substitute FILE_LIST, CHUNK_NUM, TOTAL_CHUNKS, and DEEP_MODE):
 
 ```
-You are a graphify extraction subagent. Read the files listed and extract a knowledge graph fragment.
+You extract a knowledge graph fragment from the listed files.
 Output ONLY valid JSON matching the schema below - no explanation, no markdown fences, no preamble.
 
 Files (chunk CHUNK_NUM of TOTAL_CHUNKS):
@@ -320,11 +350,32 @@ Output exactly this JSON (no other text):
 
 **Step B3 - Collect, cache, and merge**
 
-Wait for all subagents. For each result:
-- If a subagent returned valid JSON with `nodes` and `edges`, include it and save each file's nodes/edges to the cache
-- If a subagent failed or returned invalid JSON, print a warning and skip that chunk - do not abort
+Wait for all extraction tasks. The result of each chunk is `.graphify/chunks/chunk_<N>.json` (or the subagent reply for (3)). For each result:
+- If a chunk returned valid JSON with `nodes` and `edges`, include it and save each file's nodes/edges to the cache
+- If a chunk failed or returned invalid JSON, print a warning and skip that chunk - do not abort
 
 If more than half the chunks failed, stop and tell the user.
+
+Combine the chunk files into `.graphify/.graphify_semantic_new.json` (for (3), first save each subagent reply as `.graphify/chunks/chunk_<N>.json`):
+```bash
+node -e "
+const fs = require('fs');
+const dir = '.graphify/chunks';
+const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => /^chunk_\d+\.json$/.test(f)) : [];
+const out = {nodes:[],edges:[],hyperedges:[],input_tokens:0,output_tokens:0};
+let bad = 0;
+for (const f of files) {
+  let frag;
+  try { frag = JSON.parse(fs.readFileSync(dir + '/' + f, 'utf-8')); }
+  catch (e) { bad++; console.warn('Skipping chunk ' + f + ': ' + e.message); continue; }
+  if (!Array.isArray(frag.nodes) || !Array.isArray(frag.edges)) { bad++; console.warn('Skipping chunk ' + f + ': no nodes/edges'); continue; }
+  out.nodes.push(...frag.nodes); out.edges.push(...frag.edges); out.hyperedges.push(...(frag.hyperedges || []));
+  out.input_tokens += frag.input_tokens || 0; out.output_tokens += frag.output_tokens || 0;
+}
+fs.writeFileSync('.graphify/.graphify_semantic_new.json', JSON.stringify(out));
+console.log('Chunks: ' + (files.length - bad) + ' ok, ' + bad + ' skipped');
+"
+```
 
 Save new results to cache. The `saveSemanticCache` call is wrapped in `validateSemanticFragment` + `sanitizeSemanticFragment` so a malformed agent response cannot poison the per-file semantic cache:
 ```bash
@@ -381,7 +432,7 @@ fs.writeFileSync('.graphify/.graphify_semantic.json', JSON.stringify(merged, nul
 console.log(\`Extraction complete - \${deduped.length} nodes, \${allEdges.length} edges (\${(cached.nodes||[]).length} from cache, \${(raw.nodes||[]).length} new)\`);
 "
 ```
-Clean up temp files: `rm -f .graphify/.graphify_cached.json .graphify/.graphify_uncached.txt .graphify/.graphify_semantic_new.json .graphify/.graphify_detect_semantic.json .graphify/.graphify_transcripts.json .graphify/.graphify_pdf_ocr.json`
+Clean up temp files: `rm -rf .graphify/chunks && rm -f .graphify/.graphify_cached.json .graphify/.graphify_uncached.txt .graphify/.graphify_semantic_new.json .graphify/.graphify_detect_semantic.json .graphify/.graphify_transcripts.json .graphify/.graphify_pdf_ocr.json`
 
 #### Part C - Merge AST + semantic into final extraction
 
@@ -887,7 +938,7 @@ console.log('code_only:', codeOnly);
 "
 ```
 
-If `code_only` is True: print `[graphify update] Code-only changes detected - skipping semantic extraction (no LLM needed)`, run only Step 3A (AST) on the changed files, skip Step 3B entirely (no subagents), then go straight to merge and Steps 4–8.
+If `code_only` is True: print `[graphify update] Code-only changes detected - skipping semantic extraction (no LLM needed)`, run only Step 3A (AST) on the changed files, skip Step 3B entirely (no semantic executors), then go straight to merge and Steps 4–8.
 
 If `code_only` is False (any changed file is a doc/paper/image/video): first prepare transcripts and PDF sidecars if needed, then run the full Steps 3A–3C pipeline as normal.
 
@@ -915,7 +966,7 @@ fs.writeFileSync('.graphify/.graphify_incremental_semantic.json', JSON.stringify
 fs.writeFileSync('.graphify/.graphify_transcripts.json', JSON.stringify(transcriptPaths, null, 2));
 fs.writeFileSync('.graphify/.graphify_pdf_ocr.json', JSON.stringify(pdfArtifacts, null, 2));
 console.log('Prepared semantic inputs: ' + transcriptPaths.length + ' transcript(s), ' + pdfArtifacts.filter((item) => item.markdownPath).length + ' PDF sidecar(s)');
-)().catch((error) => {
+})().catch((error) => {
   console.error(error instanceof Error ? error.message : String(error));
   process.exit(1);
 });
