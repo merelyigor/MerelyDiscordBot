@@ -211,6 +211,17 @@ SEO). Одна думка — один пункт. Процес (що читав
 Dependabot звіряє всі lock-файли з базою вразливостей і пуш не зупиняє; його
 попередження — знахідка задачі.
 
-- Після пушу: `gh api "repos/<owner>/<repo>/dependabot/alerts?state=open" --paginate --jq '.[].security_advisory.severity' | sort | uniq -c`; підсумок — у `⚠️ Ризик:`.
+- Після пушу (свого чи власника): `gh api "repos/<owner>/<repo>/dependabot/alerts?state=open" --paginate --jq '.[].security_advisory.severity' | sort | uniq -c`; підсумок — у `⚠️ Ризик:`.
 - `critical`/`high` виправ тут же в межах сумісних версій (`composer update <пакет> -w`, `npm audit fix` без `--force`); мажорна — `[потрібно]`.
 - Гейт ловить `high`/`critical` до пушу; провал аудиту не обходь.
+
+## 12. Todo management
+
+`todowrite` — тільки коли він реально допомагає багатокроковій задачі.
+
+Перед кожною фінальною відповіддю:
+- оновити список todo;
+- фактично виконані пункти — `completed`;
+- застарілі або більш не потрібні — `cancelled`;
+- не лишати `pending`/`in_progress` від роботи, яка вже закінчилась;
+- новий запит, що скасовує старий todo, — старий позначати `cancelled`.
