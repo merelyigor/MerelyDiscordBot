@@ -15,9 +15,6 @@
 [projects."."]
 trust_level = "trusted"
 
-[mcp_servers.phpstorm]
-url = "http://127.0.0.1:64445/stream"
-
 [[hooks.PreToolUse]]
 matcher = "^shell$"
 

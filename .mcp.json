@@ -24,10 +24,6 @@
         "--browser",
         "chrome"
       ]
-    },
-    "phpstorm": {
-      "type": "http",
-      "url": "${PHPSTORM_MCP_URL:-http://127.0.0.1:64445/stream}"
     }
   }
 }

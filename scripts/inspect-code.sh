@@ -11,9 +11,9 @@
 # виглядає як «чисто», хоча насправді означає «не перевірено». Найчастіша причина
 # коду 2 · відкрита сама IDE: headless-інспектор відмовляється стартувати з
 # «Only one instance of PhpStorm can be run at a time». Обхід через окремі
-# idea.config.path / idea.system.path перевірено · не допомагає. Тому в щоденній
-# роботі інспекції робить агент через MCP `phpstorm lint_files`
-# (`min_severity: error`), а цей скрипт лишається для закритої IDE та CI.
+# idea.config.path / idea.system.path перевірено · не допомагає. Тому щоденні
+# перевірки агент робить безкоштовною статикою (`npm run lint`, `npm run typecheck`),
+# а цей скрипт лишається глибоким проходом для закритої IDE та CI.
 #
 # Інспекції не бачать того, що не резолвиться: без встановлених `vendor/` і
 # `node_modules/` частина типів дасть хибні «unresolved». Спершу залежності,
@@ -26,7 +26,7 @@ ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
 refuse() {
     printf 'inspect: ПЕРЕВІРКУ НЕ ВИКОНАНО · %s\n' "$1" >&2
-    printf 'inspect: це не «чисто», а «не перевірено». Агент робить інспекції через MCP phpstorm lint_files (min_severity: error).\n' >&2
+    printf 'inspect: це не «чисто», а «не перевірено». Агент робить щоденні перевірки безкоштовною статикою (`npm run lint`, `npm run typecheck`).\n' >&2
     exit 2
 }
 
@@ -89,7 +89,7 @@ inspect_args=("$ROOT" "$PROFILE_FILE" "$OUT_DIR" -format json)
 inspect_status=$?
 
 if grep -qi 'Only one instance' "$RUN_LOG"; then
-    refuse "IDE відкрита · headless-інспектор не стартує (Only one instance can be run at a time). Закрий IDE або зроби інспекції через MCP"
+    refuse "IDE відкрита · headless-інспектор не стартує (Only one instance can be run at a time). Закрий IDE або зроби щоденні перевірки безкоштовною статикою"
 fi
 
 report_count="$(find "$OUT_DIR" -maxdepth 1 -name '*.json' | wc -l | tr -d ' ')"

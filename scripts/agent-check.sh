@@ -111,7 +111,7 @@ case "$profile" in
   migration) check_rules; check_migration; check_whitespace ;;
   full) check_rules; check_migration; check_whitespace ;;
   # Headless-інспекції JetBrains: інспектор не стартує при відкритій IDE
-  # і чесно виходить кодом 2, тому щодня інспекції робить агент через MCP.
+  # і чесно виходить кодом 2, тому щодня перевірки агент робить безкоштовною статикою.
   inspect) [ "${1:-}" = "inspect" ] && shift; exec bash scripts/inspect-code.sh "$@" ;;
   *) printf 'Usage: %s {preflight|docs|test <path>|backend|migration|full|inspect [тека]}\n' "$0" >&2; exit 2 ;;
 esac
