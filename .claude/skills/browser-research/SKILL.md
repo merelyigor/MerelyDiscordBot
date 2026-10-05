@@ -29,9 +29,8 @@ Playwright MCP зареєстрований у `.mcp.json` цього репоз
 немає, кожен запуск чистий.
 
 Дешевша альтернатива, коли не хочеш тримати browser-інструменти в контексті основної
-сесії, — віддати задачу помічнику `python3 scripts/executor/exec.py scout <task.md>`
-(Codex, лише читання, `playwright` вмикається на прогін); у проєкті без харнесу —
-`codex exec -m gpt-6-luna -s read-only -c 'mcp_servers.playwright.enabled=true'
+сесії, — віддати задачу помічнику Codex (лише читання, `playwright` вмикається
+на прогін): `codex exec -m gpt-6-luna -s read-only -c 'mcp_servers.playwright.enabled=true'
 -c 'mcp_servers.playwright.default_tools_approval_mode="approve"' …`. Агента
 `browser-test` більше немає (рішення власника 2026-09-29). Вимкнути сервер у цьому проєкті —
 `disabledMcpjsonServers` у `~/.claude.json`, файл репозиторію для цього не правити.

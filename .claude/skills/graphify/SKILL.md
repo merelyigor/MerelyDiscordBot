@@ -270,14 +270,12 @@ wait   # after starting up to 4 chunks
 Run each block in one shell call (the arrays and variables must survive until the `codex`/`opencode` lines). A chunk failed when its `chunk_<N>.json` is missing or is not JSON; the reason is in `log_<N>.txt`.
 
 **(1) Codex `gpt-6-luna` (read-only helper) — default for every chunk.**
-- Project has `scripts/executor/exec.py` (executor harness): one task per chunk `.executor/tasks/graphify-chunk-<N>.md` with header `title: graphify-chunk-<N>`, `allow: []`, `output: raw`, body — the chunk prompt. Run `EXECUTOR_MAX_PARALLEL_SCOUT=4 python3 scripts/executor/exec.py scout .executor/tasks/graphify-chunk-<N>.md --detach` for all chunks, then `python3 scripts/executor/exec.py wait <run-id>` for each until the code is not 4. The JSON is in the file from the summary line `output:`; copy it to `.graphify/chunks/chunk_<N>.json`. Code 6 (`CODEX_UPDATE`) — run the printed update command and retry once; code 5 (`SELF`, the session itself runs on this model) — go to (2).
-- No harness: `CODEX_CMD`, up to 4 as background shell jobs (`&`, then `wait`).
-- Image chunks (the harness has no image flag): always `CODEX_CMD` with `-i <image>` before `--`. If Codex is unavailable, image chunks go to (3) — the OpenCode worker gets no images.
+- `CODEX_CMD`, up to 4 as background shell jobs (`&`, then `wait`).
+- Image chunks: always `CODEX_CMD` with `-i <image>` before `--`. If Codex is unavailable, image chunks go to (3) — the OpenCode worker gets no images.
 - Codex is **unavailable** when there is no `codex` binary, it is not logged in, or the model is still `not supported` after an update. Without the harness: `log_<N>.txt` says the model is not supported — update Codex CLI (`brew upgrade --cask codex` if `brew list --cask codex` succeeds, otherwise `npm install -g @openai/codex@latest`) and retry once.
 
 **(2) OpenCode `opencode-go/deepseek-v4.1-flash` (worker) — text chunks only, when (1) is unavailable.**
-- Harness: a worker task `run` with `allow: [.graphify/chunks/chunk_<N>.json]`, body — the chunk prompt plus "Write exactly this JSON to `.graphify/chunks/chunk_<N>.json`, nothing else", check `node -e "JSON.parse(require('fs').readFileSync('.graphify/chunks/chunk_<N>.json','utf-8'))"`.
-- No harness: `OPENCODE_CMD`.
+- `OPENCODE_CMD`.
 
 **(3) Built-in subagents of the current client — only if (1) and (2) are unavailable.** Say in chat which executor failed and why, then:
 

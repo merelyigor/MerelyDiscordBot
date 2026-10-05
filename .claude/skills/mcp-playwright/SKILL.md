@@ -38,9 +38,9 @@ tool schemas, з'їдає контекст і провокує хибні tool c
 - **Claude Code**: сервер `playwright` зареєстрований у `.mcp.json` цього репозиторію,
   тому в сесії з коренем інфри інструменти доступні одразу. Ціну називаємо прямо: це
   ~20 tool schemas у контексті кожної сесії. Коли контекст дорожчий за зручність —
-  віддати браузерну перевірку за сценарієм помічнику `python3 scripts/executor/exec.py scout <task.md>` (Codex, лише читання,
-  `playwright` вмикається на прогін); у проєкті без харнесу — `codex exec -m gpt-6-luna
-  -s read-only -c 'mcp_servers.playwright.enabled=true'
+  віддати браузерну перевірку за сценарієм помічнику Codex (лише читання, `playwright`
+  вмикається на прогін): `codex exec -m gpt-6-luna -s read-only
+  -c 'mcp_servers.playwright.enabled=true'
   -c 'mcp_servers.playwright.default_tools_approval_mode="approve"' …`. Агента
   `browser-test` більше немає (рішення власника 2026-09-29), або вимкнути сервер через
   `disabledMcpjsonServers` у `~/.claude.json`, не правлячи файл репозиторію.
