@@ -64,6 +64,18 @@ check_rules() {
 
   step 'Хук блокування небезпечних команд агента'
   run bash scripts/hooks/guard-command.sh --self-test
+
+  # Правило «гейт ловить high/critical до пушу» тримається лише тоді, коли хук
+  # справді запускає аудит; без цієї перевірки він тихо зводився до одних правил.
+  step 'Хук pre-push запускає профілі docs і audit'
+  local hook='.githooks/pre-push' profile
+  test -x "$hook" || fail "немає виконуваного $hook (гейт перед пушем)"
+  for profile in docs audit; do
+    grep -Eq "^PRE_PUSH_PROFILES=\\(([^)]* )?${profile}( [^)]*)?\\)$" "$hook" \
+        || fail "$hook не запускає профіль $profile"
+    grep -Eq "^[[:space:]]+${profile}\\)" scripts/agent-check.sh \
+        || fail "agent-check.sh не має профілю $profile, який запускає $hook"
+  done
 }
 
 check_whitespace() {
@@ -71,8 +83,13 @@ check_whitespace() {
   run git diff --cached --check
 }
 
-check_backend() {
+check_dependency_audit() {
+  step 'Вразливі залежності (high і critical)'
   run npm audit --audit-level=high
+}
+
+check_backend() {
+  check_dependency_audit
   run npm run lint
   run npm run typecheck
   run npm test
@@ -105,6 +122,7 @@ if [ "$#" -gt 0 ]; then shift; fi
 case "$profile" in
   preflight) report_preflight ;;
   docs) check_rules; check_whitespace ;;
+  audit) check_dependency_audit ;;
   test)
     check_rules
     test "$#" -gt 0 || fail 'provide a test path'
@@ -115,7 +133,7 @@ case "$profile" in
   full) check_rules; check_migration; check_whitespace ;;
   # Headless-інспекції JetBrains: інспектор не стартує при відкритій IDE
   # і чесно виходить кодом 2, тому щодня перевірки агент робить безкоштовною статикою.
-  *) printf 'Usage: %s {preflight|docs|test <path>|backend|migration|full|inspect [тека]}\n' "$0" >&2; exit 2 ;;
+  *) printf 'Usage: %s {preflight|docs|audit|test <path>|backend|migration|full|inspect [тека]}\n' "$0" >&2; exit 2 ;;
 esac
 
 printf '\nAgent gate passed: %s\n' "$profile"

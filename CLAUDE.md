@@ -56,6 +56,7 @@
 ```bash
 bash scripts/agent-check.sh preflight
 bash scripts/agent-check.sh docs
+bash scripts/agent-check.sh audit
 bash scripts/agent-check.sh test tests/config.test.ts
 bash scripts/agent-check.sh backend
 bash scripts/agent-check.sh migration
