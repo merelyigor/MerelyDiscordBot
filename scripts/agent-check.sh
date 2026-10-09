@@ -5,7 +5,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-readonly RULE_MIRRORS=(AGENTS.md .cursorrules CLAUDE.md QWEN.md)
+# Rules live only in AGENTS.md: Codex, Cursor, OpenCode and Qwen Code read it directly,
+# Claude Code reads it through the @AGENTS.md line in CLAUDE.md. Do not bring copies back.
+readonly RETIRED_RULE_COPIES=(.cursorrules QWEN.md)
 readonly RULE_REFERENCE='docs/AI_AGENT_RULES_REFERENCE.md'
 # Межа розміру карти єдина для всіх наборів (рішення власника 2026-09-17): будь-який
 # розмір до 349 рядків прийнятний, стоп лише на 351+. Попереджень нижче стопу немає
@@ -18,12 +20,12 @@ run() { printf '   $ %s\n' "$*"; "$@" || fail "$1 failed"; }
 
 check_rules() {
   step 'Rule identity, structure and placeholders'
-  local mirror
-  for mirror in "${RULE_MIRRORS[@]}"; do
-    test -f "$mirror" || fail "missing $mirror"
-  done
-  for mirror in "${RULE_MIRRORS[@]:1}"; do
-    cmp -s AGENTS.md "$mirror" || fail "$mirror differs from AGENTS.md"
+  test -f AGENTS.md || fail "missing AGENTS.md"
+  [[ "$(cat CLAUDE.md 2>/dev/null)" == '@AGENTS.md' ]] \
+    || fail "CLAUDE.md must contain only the line @AGENTS.md"
+  local copy
+  for copy in "${RETIRED_RULE_COPIES[@]}"; do
+    test ! -e "$copy" || fail "$copy is retired: rules live only in AGENTS.md"
   done
 
   # `core.hooksPath` не версіонується git-ом за задумом (клон не має виконувати чужі
@@ -47,7 +49,7 @@ check_rules() {
   # власному правилі про перевірку деплою і блокував будь-яку роботу в репозиторії.
   local placeholder_hits file
   placeholder_hits=""
-  for file in "${RULE_MIRRORS[@]}" "$RULE_REFERENCE"; do
+  for file in AGENTS.md "$RULE_REFERENCE"; do
     placeholder_hits+="$(
       sed -E 's/`[^`]*`//g' "$file" \
         | grep -nE '<[A-Za-z][^>]*>|PROJECT_NAME_HERE|TODO_RULE' \

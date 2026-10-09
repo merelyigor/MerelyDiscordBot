@@ -212,9 +212,9 @@ Deploy-time додаткові прапорці (керують `ensure_project_
 - §20.1 Єдина project check entrypoint - `scripts/agent-check.sh`.
 - §20.2 Profiles: `preflight`, `docs`, `test`, `backend`, `migration`, `full`.
 - §20.3 Gate read-only щодо даних: не деплоїть, не мігрує production і не змінює Git history.
-- §20.4 Mirrors `AGENTS.md`, `.cursorrules`, `CLAUDE.md`, `QWEN.md` byte-identical.
+- §20.4 Rules live only in `AGENTS.md`; `CLAUDE.md` contains only `@AGENTS.md`; `.cursorrules` and `QWEN.md` are retired.
 - §20.5 Gate перевіряє rule size, numbering references, placeholders, secrets patterns і whitespace.
-- §20.6 Negative test має доводити, що broken mirror або placeholder завершує gate ненульовим code.
+- §20.6 Negative test має доводити, що `CLAUDE.md` without `@AGENTS.md` або placeholder завершує gate ненульовим code.
 
 ## §21 Слабкі та локальні моделі
 - §21.1 Одна сесія - одна вузька задача з явним Definition of Done.
