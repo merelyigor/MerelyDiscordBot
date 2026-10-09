@@ -1,6 +1,6 @@
 # MerelyDiscordBot: нормативний довідник AI-агента
 
-Точка входу - [`AGENTS.md`](../AGENTS.md) та його byte-identical mirrors. Цей файл
+Точка входу - [`AGENTS.md`](../AGENTS.md); `CLAUDE.md` лише імпортує його рядком `@AGENTS.md`. Цей файл
 читається посекційно за routing table, а не повністю.
 
 ## §1 Як використовувати правила
@@ -101,7 +101,7 @@
 
 ## §12 Документація
 - §12.1 Commands, ENV contract, permissions, schema або deploy behavior синхронізуються з README.
-- §12.2 Rule changes синхронізують карту, довідник, gate та всі mirrors.
+- §12.2 Rule changes синхронізують карту `AGENTS.md`, довідник і gate.
 - §12.3 Значущу user/integration behavior зміну документувати пропорційно її впливу.
 
 ## §13 Git і destructive actions
