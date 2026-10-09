@@ -28,7 +28,7 @@ check_rules() {
 
   # `core.hooksPath` не версіонується git-ом за задумом (клон не має виконувати чужі
   # хуки), тому після свіжого клону хук існує файлом, але не працює. Ловимо тут;
-  # вмикається однією командою, зокрема `bash ../../../scripts/enable-project-hooks.sh`.
+  # вмикається однією командою: `git config core.hooksPath .githooks`.
   if [ -f .githooks/commit-msg ] && [ -z "${CI:-}" ]; then
     local hooks_path
     hooks_path="$(git config core.hooksPath 2>/dev/null || true)"
@@ -44,7 +44,7 @@ check_rules() {
   fi
   # Вміст у зворотних лапках це синтаксис команди (`gh run view <id> --log-failed`),
   # а не незаповнений плейсхолдер шаблона. Без цього вирізання гейт падав на
-  # власному правилі про перевірку CI і блокував будь-яку роботу в репозиторії.
+  # власному правилі про перевірку деплою і блокував будь-яку роботу в репозиторії.
   local placeholder_hits file
   placeholder_hits=""
   for file in "${RULE_MIRRORS[@]}" "$RULE_REFERENCE"; do
@@ -61,6 +61,9 @@ check_rules() {
   local duplicate
   duplicate="$(sed -nE 's/^- §([0-9]+\.[0-9]+).*/\1/p' "$RULE_REFERENCE" | sort | uniq -d | head -1)"
   test -z "$duplicate" || fail "duplicate rule number §$duplicate"
+
+  step 'Хук блокування небезпечних команд агента'
+  run bash scripts/hooks/guard-command.sh --self-test
 }
 
 check_whitespace() {

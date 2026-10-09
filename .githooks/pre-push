@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Гейт перед пушем: профіль `docs` гейта проєкту (правила й дзеркала, хук
+# блокування небезпечних команд агента, whitespace). Провал зупиняє пуш; обхід
+# `git push --no-verify` агенту заборонений (AGENTS.md).
+set -uo pipefail
+
+ROOT="$(git rev-parse --show-toplevel)" || exit 1
+cd "$ROOT" || exit 1
+
+# stdin хука (refs, що пушаться) гейту не потрібен.
+cat >/dev/null
+
+bash scripts/agent-check.sh docs </dev/null || {
+    printf '\npre-push: ПРОВАЛ гейта docs — пуш зупинено. Полагодь і повтори пуш.\n' >&2
+    exit 1
+}

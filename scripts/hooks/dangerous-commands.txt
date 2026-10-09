@@ -1,0 +1,101 @@
+# Заборонені shell-команди агента в цьому проєкті. Читає scripts/hooks/guard-command.sh
+# перед кожною командою Claude Code і Codex.
+#
+# Формат: <deny|allow><TAB><glob-патерн><TAB><причина>
+# Патерн збігається з УСІЄЮ командою, тому підрядок обрамляється `*`.
+# allow перебиває deny: це виняток для явно безпечних цілей.
+
+# ── Знищення БД одною командою ───────────────────────────────────────────────────────
+deny	bash*import-db-to-prod*	Запуск: замінює прод-БД локальною копією (усередині DROP DATABASE)
+deny	sh*import-db-to-prod*	Запуск: замінює прод-БД локальною копією
+deny	./*import-db-to-prod*	Запуск: замінює прод-БД локальною копією
+deny	/*/import-db-to-prod.sh	Запуск за абсолютним шляхом: замінює прод-БД локальною копією
+deny	*docker volume rm*	Локальна MariaDB лежить у docker-volume — це видалення БД
+deny	*docker volume prune*	Те саме масово
+deny	*compose down -v*	Знімає volume разом із даними БД
+deny	*compose down --volumes*	Знімає volume разом із даними БД
+
+# ── Сирий деструктивний SQL (лише коли є чим його виконати) ──────────────────────────
+deny	*mysql -*DROP *	Деструктивний SQL через клієнт MySQL
+deny	*mysql -*TRUNCATE *	Деструктивний SQL через клієнт MySQL
+deny	*mysql -*DELETE FROM *	Деструктивний SQL через клієнт MySQL
+deny	*mariadb -*DROP *	Деструктивний SQL через клієнт MariaDB
+deny	*tinker*DROP *	Деструктивний SQL через Laravel tinker
+deny	*wp db query*DROP*	Деструктивний SQL через wp-cli
+deny	*wp db query*TRUNCATE*	Деструктивний SQL через wp-cli
+deny	*wp db query*DELETE FROM*	Деструктивний SQL через wp-cli
+deny	*psql -*DROP *	Деструктивний SQL через psql
+deny	*psql -*TRUNCATE *	Деструктивний SQL через psql
+deny	*dropdb *	Видалення бази Postgres
+allow	*DROP DATABASE IF EXISTS tmp_*	Scratch-база агента
+allow	*DROP DATABASE tmp_*	Scratch-база агента
+
+# ── Framework-команди, що перестворюють схему ───────────────────────────────────────
+deny	*artisan*migrate:fresh*	Перестворює всю схему Laravel із втратою даних
+deny	*artisan*migrate:refresh*	Відкат+повтор усіх міграцій
+deny	*artisan*migrate:reset*	Відкат усіх міграцій
+deny	*artisan*migrate:rollback*	Відкат міграцій — лише за явним рішенням власника
+deny	*artisan*db:wipe*	Витирає всі таблиці Laravel
+deny	*wp db reset*	Витирає базу WordPress
+deny	*wp db drop*	Видаляє базу WordPress
+deny	*wp db clean*	Витирає таблиці WordPress
+deny	*wp site empty*	Витирає контент WordPress
+
+# ── Git: історія й незакомічена робота ──────────────────────────────────────────────
+deny	*git push --force*	Force-push переписує чужу історію на віддаленому
+deny	*git push -f *	Force-push переписує чужу історію на віддаленому
+deny	*git reset --hard*	Знищує незакомічену роботу без слідів
+deny	*git checkout -- *	Знищує незакомічену роботу без слідів
+deny	*git restore*	Знищує незакомічену роботу без слідів
+deny	*git clean -f*	Знищує незакомічену роботу без слідів
+deny	*git stash drop*	Знищує збережену роботу
+deny	*git stash clear*	Знищує збережену роботу
+deny	*git rebase*	Переписує історію
+deny	*git filter-branch*	Переписує історію
+deny	*git tag*	Змінює релізні мітки
+deny	*git branch -D*	Видаляє гілку разом з роботою
+deny	*git checkout --force*	Затирає локальні зміни
+
+# ── Масове видалення файлів ─────────────────────────────────────────────────────────
+deny	*rm -rf *	Рекурсивне видалення — лише для явно безпечних цілей нижче
+allow	*rm -rf node_modules*	Прибирання залежностей
+allow	*rm -rf /tmp/*	Прибирання тимчасових файлів
+allow	*rm -rf tmp-*	Власні tmp-* файли агента
+allow	*rm -rf public/build*	Артефакти збірки
+allow	*rm -rf storage/framework/views*	Кеш Blade
+deny	*find * -delete*	Масове видалення через find
+allow	*find *-name *tmp-*-delete*	Штатне прибирання власних tmp-* файлів
+
+# ── Production: копіювання файлів ───────────────────────────────────────────────────
+deny	*scp *	Копіювання на прод забороняють правила; шлях — local → commit → deploy
+deny	*rsync *	Копіювання на прод забороняють правила; шлях — local → commit → deploy
+
+# ── TTY-команди: у неінтерактивному shell вішають сесію ─────────────────────────────
+deny	vim*	Редактор вимагає TTY — правити файли штатними file-інструментами
+deny	vi *	Редактор вимагає TTY
+deny	nano*	Редактор вимагає TTY
+deny	emacs*	Редактор вимагає TTY
+deny	less *	Пейджер вимагає TTY
+deny	*| less*	Пейджер вимагає TTY
+deny	more *	Пейджер вимагає TTY
+deny	*| more*	Пейджер вимагає TTY
+deny	man *	Пейджер вимагає TTY
+deny	top	Інтерактивний монітор не завершується сам
+deny	htop	Інтерактивний монітор не завершується сам
+deny	watch *	Цикл не завершується сам
+deny	*tail -f*	Follow-режим не завершується сам — використовувати tail -n
+deny	*tail --follow*	Follow-режим не завершується сам
+deny	*docker logs -f*	Follow-режим не завершується сам — використовувати --tail
+deny	*docker logs --follow*	Follow-режим не завершується сам
+deny	*journalctl -f*	Follow-режим не завершується сам
+deny	*git add -p*	Інтерактивний режим вимагає TTY
+deny	*exec -it *	Без TTY висить або падає — штатна форма `exec -T`
+deny	*exec -ti *	Без TTY висить або падає — штатна форма `exec -T`
+deny	node	REPL без скрипта — `node script.js` дозволений
+deny	python	REPL без скрипта — `python script.py` дозволений
+deny	python3	REPL без скрипта — `python3 script.py` дозволений
+deny	php -a	Інтерактивний PHP — використовувати `php -r`
+deny	mysql	Голий клієнт відкриває REPL — потрібен `-e`
+deny	mariadb	Голий клієнт відкриває REPL — потрібен `-e`
+deny	bash -i*	Інтерактивний shell
+deny	zsh -i*	Інтерактивний shell
