@@ -127,10 +127,14 @@ bash scripts/agent-check.sh full
   і хуки агентів (`scripts/hooks/guard-command.sh`, `.claude/settings.json`,
   `.codex/config.toml`) лежать у цьому репозиторії й не викликають файлів інфри. Інфра
   лише розгортає й обслуговує сервер локально й на проді.
-- Деплой робить інфра (`Прод · Deploy Projects` у її репозиторії). Після деплою або коли
-  власник прийшов із проблемою сервера — спершу
-  `gh run list --repo merelyigor/merely-server-infra --limit 3`, червоний прогін —
-  `gh run view <id> --repo merelyigor/merely-server-infra --log-failed`.
+- Деплой — workflow інфри; зміну, що має дійти до проду (код, асети, конфіг), агент після пушу
+  деплоїть сам (рішення власника 2026-10-09), а не після кожного коміту:
+  `gh workflow run deploy-projects.yml --repo merelyigor/merely-server-infra -f deployment_scope=single -f project_name=MerelyDiscordBot -f action_type=deploy`.
+  Команда друкує URL прогону (число в кінці — `<id>`); дочекатись зеленого
+  `gh run watch <id> --repo merelyigor/merely-server-infra --exit-status`, червоний розібрати
+  `gh run view <id> --repo merelyigor/merely-server-infra --log-failed`, а не перезапускати наосліп.
+  Інший проєкт, `deployment_scope=all`, `switch-to-*`, руйнівна міграція чи зміна секретів — лише
+  за разовим дозволом. Проблема сервера — спершу `gh run list --repo merelyigor/merely-server-infra --limit 3`.
 - Безкоштовна статика (`npm run lint`, `npm run typecheck`) - детерміновані перевірки без IDE; не замінює tests/build (§23).
 - Shadcn/UI і Playwright не застосовуються: проєкт не має frontend або browser surface (§5.9-§5.10).
 - Browser не потрібен; runtime перевіряється tests, Docker health, logs і Discord test guild.
