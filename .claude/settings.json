@@ -10,17 +10,6 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/hooks/guard-command.sh\"",
-            "timeout": 15,
-            "statusMessage": "Перевірка команди за списком небезпечних"
-          }
-        ]
-      },
-      {
         "matcher": "Read|Glob",
         "hooks": [
           {

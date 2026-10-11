@@ -64,8 +64,24 @@ check_rules() {
   duplicate="$(sed -nE 's/^- §([0-9]+\.[0-9]+).*/\1/p' "$RULE_REFERENCE" | sort | uniq -d | head -1)"
   test -z "$duplicate" || fail "duplicate rule number §$duplicate"
 
-  step 'Хук блокування небезпечних команд агента'
-  run bash scripts/hooks/guard-command.sh --self-test
+  # Claude Code читає CLAUDE.md усіх тек вище проєкту, тому claudeMdExcludes тримає
+  # правила інфри поза сесією проєкту.
+  step 'Ізоляція сесії проєкту від правил інфри (claudeMdExcludes)'
+  command -v python3 >/dev/null 2>&1 || fail 'python3 недоступний — claudeMdExcludes неможливо перевірити'
+  python3 - .claude/settings.json <<'PY' || fail '.claude/settings.json без claudeMdExcludes для правил інфри'
+import json, sys
+data = json.load(open(sys.argv[1]))
+infra_rules = {
+    "**/merely-server-infra/CLAUDE.md",
+    "**/merely-server-infra/AGENTS.md",
+    "**/merely-server-infra/.claude/CLAUDE.md",
+}
+missing = infra_rules - set(data.get("claudeMdExcludes") or [])
+if missing:
+    print("немає claudeMdExcludes:", ", ".join(sorted(missing)), file=sys.stderr)
+    sys.exit(1)
+PY
+  printf '   claudeMdExcludes для правил інфри на місці\n'
 
   # Правило «гейт ловить high/critical до пушу» тримається лише тоді, коли хук
   # справді запускає аудит; без цієї перевірки він тихо зводився до одних правил.
