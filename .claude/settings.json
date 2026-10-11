@@ -19,6 +19,18 @@
           }
         ]
       }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=\"$HOME/.claude/skills/dev-standard/scripts/dev_standard_hook.py\"; if [ -f \"$f\" ]; then python3 \"$f\" --client claude || true; fi",
+            "timeout": 10,
+            "statusMessage": "Плани: де продовжувати"
+          }
+        ]
+      }
     ]
   }
 }
