@@ -115,10 +115,7 @@
 - §14.2 Production deploy, credentials/permissions change або production service restart.
 - §14.3 Нова dependency, breaking command contract або irreversible operation.
 
-## §15 Definition of Done і фінал
-- §15.1 Цільова поведінка реалізована, category/full gates мають exit code 0.
-- §15.2 Docs оновлено; diff перевірено на secrets, artifacts, `tmp-*` і scope drift.
-- §15.3 Невиконані runtime checks мають точну причину та risk.
+## §15 Фінал
 - §15.4 Рівно три блоки в цьому порядку: `## 🎯 Результат` → `## 🔧 Що змінилось` → `## ➡️ Що потрібно від тебе`. Адресат — власник, який не відкривав код.
 - §15.5 ПЕРШЕ слово `## 🎯 Результат` — вирок: `ВИРІШЕНО`, `ЧАСТКОВО`, `НЕ ВИРІШЕНО`, `ЗАБЛОКОВАНО`, `ВІДПОВІДЬ` (задача без змін). Синоніми, емодзі замість слова й «в основному зроблено» заборонені.
 - §15.6 `## 🔧 Що змінилось` — до 4 пунктів «що змінилось → що це дає», далі `✅ Перевірено:` словами і ОКРЕМИМ абзацом `📦 Коміт:`. Рядків `🔎 SEO-check:` і `🧱 OSM-check:` тут не буває: публічних сторінок і карт проєкт не має, а «не застосовно» писати заборонено.
@@ -215,13 +212,6 @@ Deploy-time додаткові прапорці (керують `ensure_project_
 - §20.4 Rules live only in `AGENTS.md`; `CLAUDE.md` contains only `@AGENTS.md`; `.cursorrules` and `QWEN.md` are retired.
 - §20.5 Gate перевіряє rule size, numbering references, placeholders, secrets patterns і whitespace.
 - §20.6 Negative test має доводити, що `CLAUDE.md` without `@AGENTS.md` або placeholder завершує gate ненульовим code.
-
-## §21 Слабкі та локальні моделі
-- §21.1 Одна сесія - одна вузька задача з явним Definition of Done.
-- §21.2 Не давати моделям без tool calling багатокрокові або secret-bearing tasks.
-- §21.3 Порядок доказу: факт -> focused test -> full gate.
-- §21.4 Після двох failures змінювати strategy; не додавати speculative code.
-- §21.5 Перед фіналом переглянути diff на secrets, generated files і scope drift.
 
 ## §22 Додаткові правила роботи
 - §22.1 Не дублювати існуючу логіку/хелпер без конкретної причини; перед створенням нового — знайти наявний аналог.
