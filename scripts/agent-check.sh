@@ -8,11 +8,8 @@ cd "$ROOT"
 # Rules live only in AGENTS.md: Codex, Cursor, OpenCode and Qwen Code read it directly,
 # Claude Code reads it through the @AGENTS.md line in CLAUDE.md. Do not bring copies back.
 readonly RETIRED_RULE_COPIES=(.cursorrules QWEN.md)
-readonly RULE_REFERENCE='docs/AI_AGENT_RULES_REFERENCE.md'
-# Межа розміру карти єдина для всіх наборів (рішення власника 2026-09-17): будь-який
-# розмір до 349 рядків прийнятний, стоп лише на 351+. Попереджень нижче стопу немає
-# навмисно · саме вони штовхали різати текст правил і псували їх якість.
-readonly RULE_MAP_MAX_LINES=350
+# Ліміт короткої карти правил.
+readonly RULE_MAP_MAX_LINES=100
 
 fail() { printf 'FAIL: %s\n' "$1" >&2; exit 1; }
 step() { printf '\n== %s ==\n' "$1"; }
@@ -38,7 +35,6 @@ check_rules() {
       fail "core.hooksPath='${hooks_path:-не задано}' замість '.githooks' · увімкни: git config core.hooksPath .githooks"
     fi
   fi
-  test -f "$RULE_REFERENCE" || fail "missing $RULE_REFERENCE"
   local map_lines
   map_lines="$(wc -l < AGENTS.md | tr -d ' ')"
   if [ "$map_lines" -gt "$RULE_MAP_MAX_LINES" ]; then
@@ -47,23 +43,17 @@ check_rules() {
   # Вміст у зворотних лапках це синтаксис команди (`gh run view <id> --log-failed`),
   # а не незаповнений плейсхолдер шаблона. Без цього вирізання гейт падав на
   # власному правилі про перевірку деплою і блокував будь-яку роботу в репозиторії.
-  local placeholder_hits file
+  local placeholder_hits
   placeholder_hits=""
-  for file in AGENTS.md "$RULE_REFERENCE"; do
-    placeholder_hits+="$(
-      sed -E 's/`[^`]*`//g' "$file" \
-        | grep -nE '<[A-Za-z][^>]*>|PROJECT_NAME_HERE|TODO_RULE' \
-        | sed "s|^|${file}:|" || true
-    )"
-  done
+  placeholder_hits="$(
+    sed -E 's/`[^`]*`//g' AGENTS.md \
+      | grep -nE '<[A-Za-z][^>]*>|PROJECT_NAME_HERE|TODO_RULE' \
+      | sed 's|^|AGENTS.md:|' || true
+  )"
   if [ -n "$placeholder_hits" ]; then
     printf '%s\n' "$placeholder_hits"
     fail 'unresolved rule placeholder found'
   fi
-  local duplicate
-  duplicate="$(sed -nE 's/^- §([0-9]+\.[0-9]+).*/\1/p' "$RULE_REFERENCE" | sort | uniq -d | head -1)"
-  test -z "$duplicate" || fail "duplicate rule number §$duplicate"
-
   # Claude Code читає CLAUDE.md усіх тек вище проєкту, тому claudeMdExcludes тримає
   # правила інфри поза сесією проєкту.
   step 'Ізоляція сесії проєкту від правил інфри (claudeMdExcludes)'
@@ -101,10 +91,10 @@ check_whitespace() {
   run git diff --cached --check
 }
 
-# Плани за skill dev-standard: механічна перевірка файлів планів (немає планів — PASS).
+# Плани за skill dev-standard плагіна merely: механічна перевірка файлів планів (немає планів — PASS).
 check_plans() {
   step 'Плани dev-standard (plan_check)'
-  local checker="$HOME/.codex/skills/dev-standard/scripts/plan_check.py"
+  local checker="$HOME/GitHub/agent-skills-merelyigor/plugins/merely/skills/dev-standard/scripts/plan_check.py"
   if [ -f "$checker" ]; then
     python3 "$checker" --root "$ROOT" || fail 'plan_check'
   else

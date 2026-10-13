@@ -29,8 +29,5 @@
     "edit": {
       "*/docker/.env": "deny"
     }
-  },
-  "instructions": [
-    ".opencode/critical-rules.md"
-  ]
+  }
 }
