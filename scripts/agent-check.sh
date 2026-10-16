@@ -91,6 +91,17 @@ check_whitespace() {
   run git diff --cached --check
 }
 
+check_secrets() {
+  step 'Секрети в публічному репозиторії'
+  local pattern='(^|[^A-Za-z0-9])([MNO][A-Za-z0-9_-]{23,25}\.[A-Za-z0-9_-]{6}\.[A-Za-z0-9_-]{27,38}|(sk|ghp|gho|ghs|github_pat|xox[abprs])[-_][A-Za-z0-9_]{16,}|AKIA[0-9A-Z]{16})|Bearer[[:space:]]+[A-Za-z0-9._~+/-]{20,}|-----BEGIN [A-Z ]*PRIVATE KEY-----|(OLLAMA_API_KEY|DISCORD_TOKEN|DB_PASSWORD)[[:space:]]*[=:][[:space:]]*.?[A-Za-z0-9_./+=-]{16,}'
+  local hits
+  hits="$(git grep --untracked -I -n -E -e "$pattern" -- . ':!scripts/agent-check.sh' ':!package-lock.json' | cut -d: -f1,2 || true)"
+  if [ -n "$hits" ]; then
+    printf '%s\n' "$hits" >&2
+    fail 'схоже на секрет у файлах репозиторію (вище файл:рядок): значення живуть лише в ENV приватного merely-server-infra'
+  fi
+}
+
 check_dependency_audit() {
   step 'Вразливі залежності (high і critical)'
   run npm audit --audit-level=high
@@ -129,16 +140,16 @@ if [ "$#" -gt 0 ]; then shift; fi
 
 case "$profile" in
   preflight) report_preflight ;;
-  docs) check_rules; check_whitespace ;;
+  docs) check_rules; check_secrets; check_whitespace ;;
   audit) check_dependency_audit ;;
   test)
     check_rules
     test "$#" -gt 0 || fail 'provide a test path'
     run node --import tsx --test "$@"
     ;;
-  backend) check_rules; check_backend; check_whitespace ;;
-  migration) check_rules; check_migration; check_whitespace ;;
-  full) check_rules; check_migration; check_whitespace ;;
+  backend) check_rules; check_secrets; check_backend; check_whitespace ;;
+  migration) check_rules; check_secrets; check_migration; check_whitespace ;;
+  full) check_rules; check_secrets; check_migration; check_whitespace ;;
   # Headless-інспекції JetBrains: інспектор не стартує при відкритій IDE
   # і чесно виходить кодом 2, тому щодня перевірки агент робить безкоштовною статикою.
   *) printf 'Usage: %s {preflight|docs|audit|test <path>|backend|migration|full|inspect [тека]}\n' "$0" >&2; exit 2 ;;

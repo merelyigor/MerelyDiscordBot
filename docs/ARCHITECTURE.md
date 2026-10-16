@@ -11,6 +11,7 @@
 - `/poll` (`/голосувати`) створює голосування з реакціями; `/mute` застосовує тимчасовий Discord timeout.
 - Heartbeat починається після `ClientReady`. `SIGINT` і `SIGTERM` завершують Discord client і пул бази.
 - `src/commands.ts` описує slash-команди, `src/help.ts` формує `/help`, а автоматичні відповіді зберігаються у `src/data/rules.json`.
+- Джарвіс: `src/jarvis-trigger.ts` розпізнає слово-тригер, `src/jarvis-discord.ts` обробляє повідомлення (ліміти `src/jarvis-limits.ts`, зображення з Discord CDN, ланцюжок відповідей, `allowedMentions` без згадок), `src/jarvis-agent.ts` веде цикл моделі з інструментами `web_search`/`web_fetch` і резервною моделлю, `src/ollama.ts` — HTTP-клієнт Ollama Cloud на вбудованому `fetch`. Обробник викликається в `MessageCreate` до правил `rules.json`.
 - Зміна команд, правил відповідей або поведінки синхронно відображається у `src/help.ts` і `src/commands.ts`. `/help` перелічує команди й автоматичні правила з їх типами.
 
 ## Стан

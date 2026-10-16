@@ -1357,17 +1357,17 @@ test('limit messages tell the user what to do', () => {
 
 #### Step 4.4 — Checkpoint: phase 4 is green, commit the code
 
-- **Status:** in-progress
+- **Status:** done
 - **Depends on:** Step 4.3
 - **Files:** bot repo commit of `src/config.ts`, `src/index.ts`, `src/help.ts`, `src/jarvis-trigger.ts`, `src/jarvis-limits.ts`, `src/ollama.ts`, `src/jarvis-agent.ts`, `src/jarvis-discord.ts`, `tests/config.test.ts`, `tests/jarvis-trigger.test.ts`, `tests/jarvis-limits.test.ts`, `tests/ollama.test.ts`, `tests/jarvis-agent.test.ts`, `tests/jarvis-discord.test.ts`, and this plan's `plans/P01-discord-jarvis-ai/tasks.md` and `plans/P01-discord-jarvis-ai/plan.md`
 - **Why:** each phase must end in a working state that is safe to stop at.
 
 **Do:**
-- [ ] From the bot repo run `bash scripts/agent-check.sh backend; echo "rc=$?"`.
-- [ ] Run `test -s dist/jarvis-discord.js && echo built`.
-- [ ] Run `git status --short` and confirm only the 16 files listed in `Files` of this step are changed or new.
-- [ ] Run `git add -- src/config.ts src/index.ts src/help.ts src/jarvis-trigger.ts src/jarvis-limits.ts src/ollama.ts src/jarvis-agent.ts src/jarvis-discord.ts tests/config.test.ts tests/jarvis-trigger.test.ts tests/jarvis-limits.test.ts tests/ollama.test.ts tests/jarvis-agent.test.ts tests/jarvis-discord.test.ts plans/P01-discord-jarvis-ai/tasks.md plans/P01-discord-jarvis-ai/plan.md` (ten of them are new files).
-- [ ] Commit those 16 files by explicit paths with the message (version = PATCH + 1 from `git log -1 --format=%s`):
+- [x] From the bot repo run `bash scripts/agent-check.sh backend; echo "rc=$?"`.
+- [x] Run `test -s dist/jarvis-discord.js && echo built`.
+- [x] Run `git status --short` and confirm only the 16 files listed in `Files` of this step are changed or new.
+- [x] Run `git add -- src/config.ts src/index.ts src/help.ts src/jarvis-trigger.ts src/jarvis-limits.ts src/ollama.ts src/jarvis-agent.ts src/jarvis-discord.ts tests/config.test.ts tests/jarvis-trigger.test.ts tests/jarvis-limits.test.ts tests/ollama.test.ts tests/jarvis-agent.test.ts tests/jarvis-discord.test.ts plans/P01-discord-jarvis-ai/tasks.md plans/P01-discord-jarvis-ai/plan.md` (ten of them are new files).
+- [x] Commit those 16 files by explicit paths with the message (version = PATCH + 1 from `git log -1 --format=%s`):
 
 ```text
 Версія: <X.Y.Z>
@@ -1394,8 +1394,8 @@ plans/P01-discord-jarvis-ai/plan.md
 ```
 
 **Verify:**
-- [ ] The gate printed `rc=0`, the build check printed `built`, the commit hook accepted the commit (`git log -1 --format=%s` shows the new `Версія:` line).
-- [ ] `git show --name-only --format= HEAD | grep -c .` → `16`; `git status --short` → empty.
+- [x] The gate printed `rc=0`, the build check printed `built`, the commit hook accepted the commit (`git log -1 --format=%s` shows the new `Версія:` line).
+- [x] `git show --name-only --format= HEAD | grep -c .` → `16`; `git status --short` → empty.
 
 **Done when:** phase 4 acceptance criteria hold with evidence and the code is committed (not pushed).
 
@@ -1404,7 +1404,7 @@ the diff; fix only within that step's scope; if not solvable in one attempt,
 set `blocked` and stop. A rejected commit message — follow the hook's text once; never `--no-verify`.
 
 **Notes:**
-- (none yet)
+- 2026-10-16: чекпоїнт виконано головною сесією: gate rc=0, `built`, коміт `Версія: 1.4.42` (16 файлів). Відхилення від Verify: `git status` показує `M AGENTS.md` — пункт про local-запуск, доданий достроково за вказівкою власника; піде з чекпоїнтом 5.5.
 
 ---
 
@@ -1418,38 +1418,38 @@ set `blocked` and stop. A rejected commit message — follow the hook's text onc
 
 #### Step 5.1 — Check the public-repository rule in `AGENTS.md` and name the gate
 
-- **Status:** pending
+- **Status:** done
 - **Depends on:** Step 4.4
 - **Files:** `AGENTS.md` (modify: one sentence appended to an existing line)
 - **Why:** the rule «Репозиторій публічний» is already in `AGENTS.md` (commit `4350e40`, 2026-10-16); this plan only checks it and, because Step 5.3 adds the secret check to the gate, names that gate in the same line.
 
 **Do:**
-- [ ] From the bot repo run `grep -c '^- Репозиторій публічний' AGENTS.md` → expected `1`. `0` → set `blocked` and tell the owner (the rule was removed after 2026-10-16).
-- [ ] At the end of that line, directly after the text `тільки назви змінних і несекретні дефолти.`, append one space and this sentence (the line stays one line):
+- [x] From the bot repo run `grep -c '^- Репозиторій публічний' AGENTS.md` → expected `1`. `0` → set `blocked` and tell the owner (the rule was removed after 2026-10-16).
+- [x] At the end of that line, directly after the text `тільки назви змінних і несекретні дефолти.`, append one space and this sentence (the line stays one line):
 
 ```markdown
 Гейт `docs` (його запускає pre-push) ловить рядки, схожі на секрети.
 ```
 
 **Verify:**
-- [ ] `grep -c '^- Репозиторій публічний.*ловить рядки, схожі на секрети\.$' AGENTS.md` → `1`; `wc -l < AGENTS.md` → at most `100`.
+- [x] `grep -c '^- Репозиторій публічний.*ловить рядки, схожі на секрети\.$' AGENTS.md` → `1`; `wc -l < AGENTS.md` → at most `100`.
 
 **Done when:** the public-repository line exists once and names the gate; the file stays within 100 lines.
 
 **If it fails:** more than 100 lines — set `blocked` (shortening other rules needs the owner).
 
 **Notes:**
-- (none yet)
+- 2026-10-16: 5.1–5.4 виконано виконавцем `jarvis_p5_rules_docs` (gpt-6-luna, PARTIAL — гейт у пісочниці не стартував через here-doc); головна сесія доганяла: `docs rc=0`, обидві проби спіймано з `file:line`, фінал `rc=0`; критерії 5.1/5.2/5.4 підтверджено прямими командами.
 
 #### Step 5.2 — Ignore every `.env.*` file
 
-- **Status:** pending
+- **Status:** done
 - **Depends on:** Step 5.1
 - **Files:** `.gitignore` (modify)
 - **Why:** today only `.env` is ignored, so a local `.env.local` with real values could be committed by mistake.
 
 **Do:**
-- [ ] Replace the line `.env` (the third line of `.gitignore`) with these two lines:
+- [x] Replace the line `.env` (the third line of `.gitignore`) with these two lines:
 
 ```gitignore
 .env
@@ -1457,25 +1457,25 @@ set `blocked` and stop. A rejected commit message — follow the hook's text onc
 ```
 
 **Verify:**
-- [ ] `git check-ignore -v .env.local` → output contains `.gitignore:4:.env.*`.
-- [ ] `git ls-files | grep -c '^\.env'` → `0` (grep exits 1 with zero matches; that is the expected result).
+- [x] `git check-ignore -v .env.local` → output contains `.gitignore:4:.env.*`.
+- [x] `git ls-files | grep -c '^\.env'` → `0` (grep exits 1 with zero matches; that is the expected result).
 
 **Done when:** `.env.*` is ignored and no env file is tracked.
 
 **If it fails:** a tracked env file appears — set `blocked` and tell the owner the path (removing it from git needs the owner).
 
 **Notes:**
-- (none yet)
+- 2026-10-16: 5.1–5.4 виконано виконавцем `jarvis_p5_rules_docs` (gpt-6-luna, PARTIAL — гейт у пісочниці не стартував через here-doc); головна сесія доганяла: `docs rc=0`, обидві проби спіймано з `file:line`, фінал `rc=0`; критерії 5.1/5.2/5.4 підтверджено прямими командами.
 
 #### Step 5.3 — Add the secret check to the gate
 
-- **Status:** pending
+- **Status:** done
 - **Depends on:** Step 5.2
 - **Files:** `scripts/agent-check.sh` (modify)
 - **Why:** a rule in text is not enough for a public repo; the pre-push gate must stop a commit that carries a token or a key value.
 
 **Do:**
-- [ ] Insert this function, followed by one empty line, directly above the line `check_dependency_audit() {`:
+- [x] Insert this function, followed by one empty line, directly above the line `check_dependency_audit() {`:
 
 ```bash
 check_secrets() {
@@ -1489,15 +1489,15 @@ check_secrets() {
   fi
 }
 ```
-- [ ] Replace the line `  docs) check_rules; check_whitespace ;;` with `  docs) check_rules; check_secrets; check_whitespace ;;`.
-- [ ] Replace the line `  backend) check_rules; check_backend; check_whitespace ;;` with `  backend) check_rules; check_secrets; check_backend; check_whitespace ;;`.
-- [ ] Replace the line `  full) check_rules; check_migration; check_whitespace ;;` with `  full) check_rules; check_secrets; check_migration; check_whitespace ;;`.
-- [ ] Replace the line `  migration) check_rules; check_migration; check_whitespace ;;` with `  migration) check_rules; check_secrets; check_migration; check_whitespace ;;`.
-- [ ] Run `bash -n scripts/agent-check.sh`.
+- [x] Replace the line `  docs) check_rules; check_whitespace ;;` with `  docs) check_rules; check_secrets; check_whitespace ;;`.
+- [x] Replace the line `  backend) check_rules; check_backend; check_whitespace ;;` with `  backend) check_rules; check_secrets; check_backend; check_whitespace ;;`.
+- [x] Replace the line `  full) check_rules; check_migration; check_whitespace ;;` with `  full) check_rules; check_secrets; check_migration; check_whitespace ;;`.
+- [x] Replace the line `  migration) check_rules; check_migration; check_whitespace ;;` with `  migration) check_rules; check_secrets; check_migration; check_whitespace ;;`.
+- [x] Run `bash -n scripts/agent-check.sh`.
 
 **Verify:**
-- [ ] `bash scripts/agent-check.sh docs; echo "rc=$?"` → `rc=0` (no false positive on the current tree).
-- [ ] Probe — create a fake token, expect a failure that names only `file:line`, then delete the probe:
+- [x] `bash scripts/agent-check.sh docs; echo "rc=$?"` → `rc=0` (no false positive on the current tree).
+- [x] Probe — create a fake token, expect a failure that names only `file:line`, then delete the probe:
 
 ```bash
 printf 'M%s.%s.%s\n' "$(printf 'a%.0s' $(seq 24))" abcdef "$(printf 'b%.0s' $(seq 30))" > tmp-secret-probe.txt
@@ -1514,46 +1514,46 @@ bash scripts/agent-check.sh docs; echo "rc=$?"
 **If it fails:** a false positive on a real file — record `file:line` (not the content) in `Notes` and set `blocked`; do not weaken the pattern without the owner. `bash -n` error — compare the inserted block with the code block above once.
 
 **Notes:**
-- (none yet)
+- 2026-10-16: 5.1–5.4 виконано виконавцем `jarvis_p5_rules_docs` (gpt-6-luna, PARTIAL — гейт у пісочниці не стартував через here-doc); головна сесія доганяла: `docs rc=0`, обидві проби спіймано з `file:line`, фінал `rc=0`; критерії 5.1/5.2/5.4 підтверджено прямими командами.
 
 #### Step 5.4 — Document Jarvis in README and docs
 
-- **Status:** pending
+- **Status:** done
 - **Depends on:** Step 5.3
 - **Files:** `README.md` (modify), `docs/CONFIGURATION.md` (modify), `docs/ARCHITECTURE.md` (modify)
 - **Why:** the public docs must name every ENV variable and the module layout without any value.
 
 **Do:**
-- [ ] In `README.md` insert this line directly after the line that starts with ``- `/help` (`/допомога`) показує повну довідку``:
+- [x] In `README.md` insert this line directly after the line that starts with ``- `/help` (`/допомога`) показує повну довідку``:
 
 ```markdown
 - Джарвіс — ШІ-помічник: повідомлення, що починається зі слова «Джарвіс» (також з помилками: джарвис, джервіс, jarvis), отримує відповідь моделі Ollama Cloud; для свіжих фактів бот шукає в інтернеті й дає джерела, розуміє зображення, а відповідь (reply) на його повідомлення продовжує розмову. Вмикається через ENV, див. `docs/CONFIGURATION.md`.
 ```
-- [ ] In `docs/CONFIGURATION.md` insert this paragraph and a blank line directly above the line that starts with `Секрети й значення production ENV не виводити`:
+- [x] In `docs/CONFIGURATION.md` insert this paragraph and a blank line directly above the line that starts with `Секрети й значення production ENV не виводити`:
 
 ```markdown
-Джарвіс вмикається лише через ENV: `JARVIS_ENABLED` (`true`/`false`, за замовчуванням `false`), `OLLAMA_API_KEY` (секрет; порожній вимикає Джарвіса, бот працює далі), `OLLAMA_BASE_URL` (`https://ollama.com`), `JARVIS_MODEL` (`gemma4:31b`), `JARVIS_FALLBACK_MODEL` (`gpt-oss:120b`), `JARVIS_WEB_SEARCH` (`true`), `JARVIS_TIMEOUT_SECONDS` (`90`), `JARVIS_MAX_TOOL_ROUNDS` (`4`), `JARVIS_USER_COOLDOWN_SECONDS` (`15`), `JARVIS_USER_DAILY_LIMIT` (`40`, `0` — без ліміту), `JARVIS_MAX_CONCURRENT` (`2`), `JARVIS_CHANNEL_IDS` (ID каналів через кому; порожньо — усі канали). Значення задаються в `../docker/.env.local` і `../docker/.env.prod`; у цьому публічному репозиторії лише назви й несекретні дефолти.
+Джарвіс вмикається лише через ENV: `JARVIS_ENABLED` (`true`/`false`, за замовчуванням `false`), `OLLAMA_API_KEY` (секрет; порожній вимикає Джарвіса, бот працює далі), `OLLAMA_API_KEY_2.._5` (резервні ключі для ротації лімітів; порожні ігноруються), `OLLAMA_BASE_URL` (`https://ollama.com`), `JARVIS_MODEL` (`gemma4:31b`), `JARVIS_FALLBACK_MODEL` (`gpt-oss:120b`), `JARVIS_WEB_SEARCH` (`true`), `JARVIS_TIMEOUT_SECONDS` (`90`), `JARVIS_MAX_TOOL_ROUNDS` (`4`), `JARVIS_USER_COOLDOWN_SECONDS` (`15`), `JARVIS_USER_DAILY_LIMIT` (`40`, `0` — без ліміту), `JARVIS_MAX_CONCURRENT` (`2`), `JARVIS_CHANNEL_IDS` (ID каналів через кому; порожньо — усі канали). Значення задаються в `../docker/.env.local` і `../docker/.env.prod`; у цьому публічному репозиторії лише назви й несекретні дефолти.
 ```
-- [ ] In `docs/ARCHITECTURE.md` insert this line directly after the line that starts with ``- `src/commands.ts` описує slash-команди``:
+- [x] In `docs/ARCHITECTURE.md` insert this line directly after the line that starts with ``- `src/commands.ts` описує slash-команди``:
 
 ```markdown
 - Джарвіс: `src/jarvis-trigger.ts` розпізнає слово-тригер, `src/jarvis-discord.ts` обробляє повідомлення (ліміти `src/jarvis-limits.ts`, зображення з Discord CDN, ланцюжок відповідей, `allowedMentions` без згадок), `src/jarvis-agent.ts` веде цикл моделі з інструментами `web_search`/`web_fetch` і резервною моделлю, `src/ollama.ts` — HTTP-клієнт Ollama Cloud на вбудованому `fetch`. Обробник викликається в `MessageCreate` до правил `rules.json`.
 ```
 
 **Verify:**
-- [ ] `grep -c 'Джарвіс' README.md docs/CONFIGURATION.md docs/ARCHITECTURE.md` → each file at least `1`.
-- [ ] `grep -c 'JARVIS_CHANNEL_IDS' docs/CONFIGURATION.md` → `1`.
+- [x] `grep -c 'Джарвіс' README.md docs/CONFIGURATION.md docs/ARCHITECTURE.md` → each file at least `1`.
+- [x] `grep -c 'JARVIS_CHANNEL_IDS' docs/CONFIGURATION.md` → `1`.
 
 **Done when:** the three documents describe Jarvis and every ENV name.
 
 **If it fails:** an anchor line is missing — find the nearest heading with `grep -n '^#' <file>` and record it in `Notes`; insert under that heading once; otherwise `blocked`.
 
 **Notes:**
-- (none yet)
+- 2026-10-16: 5.1–5.4 виконано виконавцем `jarvis_p5_rules_docs` (gpt-6-luna, PARTIAL — гейт у пісочниці не стартував через here-doc); головна сесія доганяла: `docs rc=0`, обидві проби спіймано з `file:line`, фінал `rc=0`; критерії 5.1/5.2/5.4 підтверджено прямими командами.
 
 #### Step 5.5 — Checkpoint: phase 5 is green, commit rules and docs
 
-- **Status:** pending
+- **Status:** in-progress
 - **Depends on:** Step 5.4
 - **Files:** bot repo commit of `AGENTS.md`, `.gitignore`, `scripts/agent-check.sh`, `README.md`, `docs/CONFIGURATION.md`, `docs/ARCHITECTURE.md`, and this plan's `plans/P01-discord-jarvis-ai/tasks.md` and `plans/P01-discord-jarvis-ai/plan.md`
 - **Why:** each phase must end in a working state that is safe to stop at.
@@ -1923,7 +1923,12 @@ bash -c 'source scripts/utils.sh >/dev/null 2>&1; ssh_with_password_fallback "do
 | 2026-10-16 | — | правило local-запуску | за вказівкою власника в `AGENTS.md` додано пункт про локальний docker-запуск і обовʼязкову зупинку (дублювання з продом); без коміту, до чекпоїнта 5.5 |
 | 2026-10-16 | 4.1 | done | лімітер, тести 3/3/0 |
 | 2026-10-16 | 4.2 | done | Discord-обробник, тести 4/4/0 |
-| 2026-10-16 | 4.3 | done | проводка до matchRules, /help |
+| 2026-10-16 | 4.3 | done |
+| 2026-10-16 | 5.1 | done | правило публічності + гейт |
+| 2026-10-16 | 5.2 | done | .env.* ігноруються |
+| 2026-10-16 | 5.3 | done | секрет-скан у гейті, проби спіймано |
+| 2026-10-16 | 5.4 | done | доки, ENV-назви включно з _2.._5 |
+| 2026-10-16 | 4.4 | done | gate 0, built, коміт 1.4.42 (16 файлів) | проводка до matchRules, /help |
 | 2026-10-16 | 3.3 | done | lint+typecheck+test rc=0, 57/57/0 |
 | 2026-10-16 | 2.4 | done | пʼять ключів у `apiKeys`, тести 8/8/0 |
 | 2026-10-16 | 2.1 | done | Jarvis-конфіг з ENV, тести 6/6/0, typecheck 0 |
