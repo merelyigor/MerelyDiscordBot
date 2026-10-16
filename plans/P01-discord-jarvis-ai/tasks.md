@@ -1867,7 +1867,7 @@ bash -c 'set -a; source www/MerelyDiscordBot/docker/.env.prod; curl -s -o /dev/n
 
 #### Step 8.3 — Push infra and watch the infra deploy
 
-- **Status:** pending
+- **Status:** done
 - **Depends on:** Step 8.2
 - **Files:** none (git push)
 - **Why:** the production server takes the bot ENV files and Compose from the infra repo; a push to `main` starts the infra deploy.
@@ -1885,7 +1885,7 @@ bash -c 'set -a; source www/MerelyDiscordBot/docker/.env.prod; curl -s -o /dev/n
 **If it fails:** a red deploy — read `gh run view <id> --log-failed | tail -40`, record the failed step in `Notes`, set `blocked` and tell the owner (production changes need the owner).
 
 **Notes:**
-- (none yet)
+- 2026-10-16: `git push origin main` в інфрі — Everything up-to-date (rc=0); ран `Прод · Auto Deploy Infrastructure` 38938389750 — success (`gh run watch --exit-status` rc=0).
 
 #### Step 8.4 — Deploy the bot
 
