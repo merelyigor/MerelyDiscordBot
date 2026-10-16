@@ -79,6 +79,7 @@
 
 - **Working directory:** `/Users/igor/GitHub/merely-server-infra/www/MerelyDiscordBot/public` — корінь цього репозиторію бота зі своїми хуками й гейтом; тут лежить план. Кроки з ENV, Compose і деплоєм (фази 6 і 8) виконуються з кореня приватного infra-репозиторію `/Users/igor/GitHub/merely-server-infra`; шляхи `www/MerelyDiscordBot/docker/...` відносні до нього. Кожна команда кроку вказує свою теку: `cd` перед нею обов'язковий.
 - **Executor client:** the plan runs in Codex or in Claude Code. In Codex the `merely` plugin (marketplace `merely-harness` in `~/.codex/config.toml`) provides the skills `dev-standard`, `brygada` and `adversarial-review`; Phase 7 uses the Codex route of `brygada` (`references/codex.md`, native subagents). The plugin hook that guards the plan start does not run in Codex, so instruction 1 binds by its text alone.
+- **Already done:** рядок «Репозиторій публічний» у `AGENTS.md`, а також опис функцій бота, даних і маршрут до `docs/USER_DATA_GUIDE.md` — коміт `4350e40` (2026-10-16); крок 5.1 лише перевіряє рядок і додає згадку гейта.
 - **Key files:**
   - `src/index.ts` — точка входу:
     - `const client = new Client(` створює клієнт;

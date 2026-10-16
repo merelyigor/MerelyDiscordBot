@@ -1294,24 +1294,25 @@ set `blocked` and stop. A rejected commit message — follow the hook's text onc
 - **Verification:** `bash scripts/agent-check.sh docs` and `bash scripts/agent-check.sh backend` from the bot repo.
 - **Parallel group:** none
 
-#### Step 5.1 — State in `AGENTS.md` that the repository is public
+#### Step 5.1 — Check the public-repository rule in `AGENTS.md` and name the gate
 
 - **Status:** pending
 - **Depends on:** Step 4.4
-- **Files:** `AGENTS.md` (modify)
-- **Why:** an agent reading the rules must know the repo is public and where secrets live.
+- **Files:** `AGENTS.md` (modify: one sentence appended to an existing line)
+- **Why:** the rule «Репозиторій публічний» is already in `AGENTS.md` (commit `4350e40`, 2026-10-16); this plan only checks it and, because Step 5.3 adds the secret check to the gate, names that gate in the same line.
 
 **Do:**
-- [ ] Insert this line directly after the line that starts with `- Секрети не виводити в лог чи відповідь.`:
+- [ ] From the bot repo run `grep -c '^- Репозиторій публічний' AGENTS.md` → expected `1`. `0` → set `blocked` and tell the owner (the rule was removed after 2026-10-16).
+- [ ] At the end of that line, directly after the text `тільки назви змінних і несекретні дефолти.`, append one space and this sentence (the line stays one line):
 
 ```markdown
-- Репозиторій публічний (GitHub `merelyigor/MerelyDiscordBot`, MIT): у git не потрапляють секрети, токени, API-ключі, значення production ENV і приватні дані. Ключі, моделі, ліміти й вмикання функцій (зокрема `OLLAMA_API_KEY` і `JARVIS_*`) задаються лише через ENV; у коді, тестах і документації — тільки назви змінних і несекретні дефолти. Гейт `docs` (його запускає pre-push) ловить рядки, схожі на секрети.
+Гейт `docs` (його запускає pre-push) ловить рядки, схожі на секрети.
 ```
 
 **Verify:**
-- [ ] `grep -c 'Репозиторій публічний' AGENTS.md` → `1`; `wc -l < AGENTS.md` → at most `100`.
+- [ ] `grep -c '^- Репозиторій публічний.*ловить рядки, схожі на секрети\.$' AGENTS.md` → `1`; `wc -l < AGENTS.md` → at most `100`.
 
-**Done when:** the line is present and the file stays within 100 lines.
+**Done when:** the public-repository line exists once and names the gate; the file stays within 100 lines.
 
 **If it fails:** more than 100 lines — set `blocked` (shortening other rules needs the owner).
 
@@ -1784,3 +1785,4 @@ bash -c 'source scripts/utils.sh >/dev/null 2>&1; ssh_with_password_fallback "do
 | --- | --- | --- | --- |
 | 2026-10-16 | — | plan created | merelyigor; перенесено з `merely-server-infra` P06 |
 | 2026-10-16 | — | plan updated | примітка про виконання в Codex; перед пушем бота показати власнику всі коміти, що підуть |
+| 2026-10-16 | 5.1 | step rewritten | правило «Репозиторій публічний» внесено окремо (`4350e40`), крок лише перевіряє його й додає згадку гейта |
