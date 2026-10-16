@@ -6,7 +6,6 @@
       <synchronize>true</synchronize>
       <jdbc-driver>org.mariadb.jdbc.Driver</jdbc-driver>
       <jdbc-url>jdbc:mariadb://127.0.0.1:13306/merely_discord_bot_local</jdbc-url>
-      <user-name>temp_db_user</user-name>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
   </component>
