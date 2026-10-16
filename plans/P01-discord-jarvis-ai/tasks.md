@@ -1770,7 +1770,7 @@ review), and do not review your own change.
 
 #### Step 8.1 — Owner adds the Ollama key and enables Jarvis
 
-- **Status:** pending
+- **Status:** blocked
 - **Depends on:** Step 7.1
 - **Files:** `www/MerelyDiscordBot/docker/.env.prod` (owner edits and commits)
 - **Why:** the key is a secret: only the owner writes it, and only the owner commits the line that carries it.
@@ -1798,7 +1798,7 @@ bash -c 'set -a; source www/MerelyDiscordBot/docker/.env.prod; curl -s -o /dev/n
 **If it fails:** the owner's check returned `401` — the key is wrong, ask the owner again; `404` — the model is not available on the tariff, ask the owner whether to set `JARVIS_MODEL=gpt-oss:120b`; keep the step `blocked` until the owner answers.
 
 **Notes:**
-- (none yet)
+- 2026-10-16: ключі (5 шт) і `JARVIS_ENABLED=true` у `.env.prod` власник вписав, перевірки імен пройдено (`OLLAMA_API_KEY` непорожній ×1), АЛЕ файл незакомічен (`M www/MerelyDiscordBot/docker/.env.prod`): за планом рядок з ключем комітить лише власник. Чекаю коміт власника.
 
 #### Step 8.2 — Push the bot repository
 
@@ -1935,7 +1935,10 @@ bash -c 'source scripts/utils.sh >/dev/null 2>&1; ssh_with_password_fallback "do
 | 2026-10-16 | 6.2 | done | env-блоки 16+16 |
 | 2026-10-16 | 7.1r1 | reviewed | 6 кутів: 8 підтверджено, 3 відхилено |
 | 2026-10-16 | 7.1r3 | reviewed | 2 PASS, 1 новий Medium |
+| 2026-10-16 | 7.1 | done | ревʼю закрито, залишки: редиректи (прийнятий ризик), gate-тест (BACKLOG) |
+| 2026-10-16 | 8.1 | blocked | ключі є, чекаю коміт `.env.prod` власника |
 | 2026-10-16 | 7.1fix3 | done | крапка FQDN, тести 10/10, сюїт 71/71/0 |
+| 2026-10-16 | 7.1c | done | коміт фіксів `Версія: 1.4.44` (11 файлів, включно з BACKLOG) |
 | 2026-10-16 | 7.1r2 | reviewed | contracts/tests чисто; 3 нові підтверджено, редиректи — прийнятий ризик |
 | 2026-10-16 | 7.1fix | done | 9 файлів, тести 71/71/0 |
 | 2026-10-16 | 6.3 | done | гейти 0/0/0, коміт власника v1.5.305 |
