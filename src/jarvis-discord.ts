@@ -3,7 +3,7 @@ import type { JarvisConfig } from './config.js';
 import { askJarvis } from './jarvis-agent.js';
 import { JarvisLimiter, type LimitResult } from './jarvis-limits.js';
 import { JarvisMemory, mergeHistories } from './jarvis-memory.js';
-import type { JarvisDiscordTools } from './jarvis-agent.js';
+import type { GifAttachment, JarvisDiscordTools } from './jarvis-agent.js';
 import { parseJarvisTrigger } from './jarvis-trigger.js';
 import { OllamaError, createOllamaClient, type OllamaMessage } from './ollama.js';
 
@@ -14,6 +14,10 @@ const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
 const IMAGE_HOSTS = new Set(['cdn.discordapp.com', 'media.discordapp.net']);
 const HISTORY_LIMIT = 6;
+const GIPHY_SEARCH_URL = 'https://api.giphy.com/v1/gifs/search';
+const GIF_MAX_BYTES = 8 * 1024 * 1024;
+const MAX_GIF_ATTACHMENTS = 2;
+const GIPHY_MEDIA_SUFFIX = '.giphy.com';
 const REMEMBERED_ANSWERS = 500;
 const TYPING_INTERVAL_MS = 8000;
 const IMAGE_DOWNLOAD_TIMEOUT_MS = 15_000;
@@ -76,6 +80,16 @@ export function pickImageAttachments(attachments: AttachmentInfo[]): string[] {
     })
     .slice(0, MAX_IMAGES)
     .map((attachment) => attachment.url);
+}
+
+export function isGiphyMediaUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:'
+      && (parsed.hostname === 'giphy.com' || parsed.hostname.endsWith(GIPHY_MEDIA_SUFFIX));
+  } catch {
+    return false;
+  }
 }
 
 export function limitText(result: Exclude<LimitResult, { kind: 'ok' }>): string {
@@ -202,6 +216,34 @@ export function createJarvis(config: JarvisConfig, client: Client, fetchImpl: ty
 
 
   function buildDiscordTools(message: Message<true>): JarvisDiscordTools {
+    const pendingGifs: GifAttachment[] = [];
+
+    async function fetchGifAttachment(query: string): Promise<string> {
+      const q = query.trim().slice(0, 100);
+      if (!q) return 'error: empty query';
+      if (!config.giphyApiKey) return 'error: gif search is unavailable (GIPHY_API_KEY is not set) — give a giphy.com search page link instead';
+      if (pendingGifs.length >= MAX_GIF_ATTACHMENTS) return 'error: gif limit reached for this answer';
+      const params = new URLSearchParams({ api_key: config.giphyApiKey, q, limit: '3', rating: 'g' });
+      const search = await fetchImpl(`${GIPHY_SEARCH_URL}?${params}`, { signal: AbortSignal.timeout(IMAGE_DOWNLOAD_TIMEOUT_MS) }).catch(() => null);
+      if (!search?.ok) return 'error: gif search failed';
+      const payload = (await search.json().catch(() => null)) as {
+        data?: Array<{ images?: Record<string, { url?: string } | undefined> }>;
+      } | null;
+      for (const item of payload?.data ?? []) {
+        const url = [item.images?.downsized?.url, item.images?.fixed_height?.url, item.images?.original?.url]
+          .find((candidate): candidate is string => typeof candidate === 'string' && isGiphyMediaUrl(candidate));
+        if (!url) continue;
+        const response = await fetchImpl(url, { signal: AbortSignal.timeout(IMAGE_DOWNLOAD_TIMEOUT_MS) }).catch(() => null);
+        if (!response?.ok) continue;
+        const buffer = Buffer.from(await response.arrayBuffer());
+        if (buffer.byteLength === 0 || buffer.byteLength > GIF_MAX_BYTES) continue;
+        const filename = `jarvis-gif-${pendingGifs.length + 1}.gif`;
+        pendingGifs.push({ filename, data: buffer });
+        return `attached ${filename} for "${q}"; mention it briefly in the answer text`;
+      }
+      return 'error: no suitable gif found';
+    }
+
     async function fetchTextChannel(id: string) {
       const guild = message.guild;
       if (!guild) return null;
@@ -243,6 +285,10 @@ export function createJarvis(config: JarvisConfig, client: Client, fetchImpl: ty
           query,
         );
       },
+      pendingGifs,
+      async sendGif(query: string): Promise<string> {
+        return fetchGifAttachment(query);
+      },
     };
   }
 
@@ -280,10 +326,18 @@ export function createJarvis(config: JarvisConfig, client: Client, fetchImpl: ty
           await message.reply({ content: 'Не вдалося завантажити зображення, надішли його ще раз.', allowedMentions: { parse: [], repliedUser: true } });
           return true;
         }
-        const answer = await askJarvis(ollama, config, { question, images, history, now: new Date() }, buildDiscordTools(message));
+        const discordTools = buildDiscordTools(message);
+        const answer = await askJarvis(ollama, config, { question, images, history, now: new Date() }, discordTools);
         const note = answer.imagesDropped ? '\n\n_(Зображення не враховано: основна модель зараз недоступна.)_' : '';
         const parts = splitForDiscord(`${answer.text}${note}`);
-        const first = await message.reply({ content: parts[0] ?? '…', allowedMentions: { parse: [], repliedUser: true } });
+        const files = discordTools.pendingGifs
+          .splice(0, MAX_GIF_ATTACHMENTS)
+          .map((gif) => ({ attachment: gif.data, name: gif.filename }));
+        const first = await message.reply({
+          content: parts[0] ?? '…',
+          ...(files.length > 0 ? { files } : {}),
+          allowedMentions: { parse: [], repliedUser: true },
+        });
         rememberAnswer(first.id);
         for (const part of parts.slice(1)) {
           const sent = await message.channel.send({ content: part, allowedMentions: { parse: [] } });
@@ -293,7 +347,7 @@ export function createJarvis(config: JarvisConfig, client: Client, fetchImpl: ty
           { role: 'user', content: question.trim() || '[зображення]' },
           { role: 'assistant', content: answer.text },
         ]);
-        console.info(`Jarvis answered: model=${answer.model} fallback=${answer.usedFallback} tools=${answer.toolCalls} images=${images.length} tokens=${answer.promptTokens}/${answer.outputTokens} ms=${Date.now() - started}`);
+        console.info(`Jarvis answered: model=${answer.model} fallback=${answer.usedFallback} tools=${answer.toolCalls} images=${images.length} gifs=${files.length} tokens=${answer.promptTokens}/${answer.outputTokens} ms=${Date.now() - started}`);
       } catch (error) {
         const status = error instanceof OllamaError ? String(error.status ?? 'network') : 'internal';
         console.error(`Jarvis failed: status=${status} ms=${Date.now() - started}`);

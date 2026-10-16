@@ -37,6 +37,8 @@ test('loads Jarvis defaults when enabled', () => {
   assert.equal(jarvis.memoryMessages, 20);
   assert.equal(jarvis.memoryTtlMs, 72 * 3_600_000);
   assert.equal(jarvis.musicChannelId, '697224336460873761');
+  assert.equal(jarvis.giphyApiKey, undefined);
+  assert.equal(loadJarvisConfig({ JARVIS_ENABLED: 'true', OLLAMA_API_KEY: 'k', GIPHY_API_KEY: ' giphy-1 ' })?.giphyApiKey, 'giphy-1');
 });
 
 test('disables Jarvis without an API key instead of failing', () => {

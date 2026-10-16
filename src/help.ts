@@ -20,6 +20,21 @@ function escapeRegex(s: string): string {
   return s.replace(/\\/g, '\\\\');
 }
 
+const MAX_FIELD_VALUE = 1024;
+
+/** Trims whole lines so an embed field value fits the Discord limit. */
+export function fitFieldLines(lines: string[], limit = MAX_FIELD_VALUE): string {
+  const full = lines.join('\n');
+  if (full.length <= limit) return full;
+  const kept: string[] = [];
+  for (const line of lines) {
+    const next = kept.length > 0 ? `${kept.join('\n')}\n${line}` : line;
+    if (next.length > limit - 20) break;
+    kept.push(line);
+  }
+  return `${kept.join('\n')}\n… і ще ${lines.length - kept.length}.`;
+}
+
 function formatPattern(pattern: string, type: string): string {
   if (type === 'text') return `\`${pattern}\``;
   if (type === 'regex') return `\`${escapeRegex(pattern)}\``;
@@ -54,6 +69,7 @@ export function buildHelpEmbed(jarvisEnabled = false): EmbedBuilder {
         'Почни повідомлення зі слова «Джарвіс» (можна з вітання: йоу, привіт) (можна з помилкою: джарвис, джервіс, jarvis) і постав питання — відповість ШІ, а для свіжих фактів пошукає в інтернеті й дасть джерела.',
         'Можна додати зображення. Відповідь (reply) на повідомлення Джарвіса продовжує розмову без слова «Джарвіс». Доступно учасникам з ролями «Офісний NPC» та «Офісники».',
         'Вміє прочитати останні повідомлення вказаного каналу (#назва) і переказати, а також знайти по всьому серверу, де і хто писав про щось, — з посиланнями на повідомлення. Музика: підбере трек і надішле m!play у музичний канал (якщо музбот слухається ботів).',
+        'Гіфки: попроси «Джарвіс, кинь гіфку …» — знайде в інтернеті й надішле в чат (потрібен ключ Giphy на сервері, інакше дасть посилання).',
       ].join('\n'),
     });
   }
@@ -69,7 +85,7 @@ export function buildHelpEmbed(jarvisEnabled = false): EmbedBuilder {
   embed.addFields({
     name: 'Автоматичні відповіді (правила)',
     value: triggers.length > 0
-      ? triggers.join('\n')
+      ? fitFieldLines(triggers)
       : 'Правил не налаштовано.',
   });
 

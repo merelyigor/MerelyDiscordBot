@@ -315,3 +315,56 @@ test('reports an empty server search honestly', async () => {
   assert.equal(await searchServerMessages(guild as never, '111', 'self-1', 'bot', 'де писали про тачки'), 'nothing found on this server');
   assert.equal(await searchServerMessages(guild as never, '111', 'self-1', 'bot', 'де ти'), 'error: empty query');
 });
+
+test('attaches a gif through the send_gif tool', async () => {
+  const sent: unknown[] = [];
+  const gifBytes = Buffer.from('GIF89a-test');
+  let chatCalls = 0;
+  const fetchImpl = (async (input: string | URL | Request) => {
+    const url = String(input);
+    if (url.includes('api.giphy.com')) {
+      return new Response(JSON.stringify({
+        data: [{ images: { downsized: { url: 'https://media.giphy.com/test-gif.gif' } } }],
+      }), { status: 200 });
+    }
+    if (url.includes('media.giphy.com')) {
+      return new Response(gifBytes, { status: 200 });
+    }
+    chatCalls += 1;
+    const message = chatCalls === 1
+      ? { role: 'assistant', content: '', tool_calls: [{ function: { name: 'send_gif', arguments: { query: 'sixxen' } } }] }
+      : { role: 'assistant', content: 'Ось твоя гіфка!' };
+    return new Response(JSON.stringify({ message }), { status: 200 });
+  }) as typeof fetch;
+  const configWithGif = { ...jarvisConfig, giphyApiKey: 'test-giphy-key' };
+  const jarvis = createJarvis(configWithGif, { user: { id: 'bot' } } as unknown as Client, fetchImpl);
+
+  const result = await jarvis.handle(mockMessage({ id: 'gif-1', content: 'Джарвіс, кинь гіфку сіксевен' }, sent));
+
+  assert.equal(result, true);
+  const reply = sent[0] as { content: string; files?: Array<{ name: string }> };
+  assert.match(reply.content, /гіфка/);
+  assert.equal(reply.files?.length, 1);
+  assert.match(reply.files?.[0]?.name ?? '', /\.gif$/);
+});
+
+test('falls back to a giphy link when no API key is set', async () => {
+  const sent: unknown[] = [];
+  let chatCalls = 0;
+  const fetchImpl = (async () => {
+    chatCalls += 1;
+    const message = chatCalls === 1
+      ? { role: 'assistant', content: '', tool_calls: [{ function: { name: 'send_gif', arguments: { query: 'cat' } } }] }
+      : { role: 'assistant', content: 'Тримай: https://giphy.com/search/cat-gifs' };
+    return new Response(JSON.stringify({ message }), { status: 200 });
+  }) as typeof fetch;
+  const jarvis = createJarvis(jarvisConfig, { user: { id: 'bot' } } as unknown as Client, fetchImpl);
+
+  const result = await jarvis.handle(mockMessage({ id: 'gif-2', content: 'Джарвіс, кинь гіфку котика' }, sent));
+
+  assert.equal(result, true);
+  assert.equal(chatCalls, 2);
+  const reply = sent[0] as { content: string; files?: unknown[] };
+  assert.match(reply.content, /giphy\.com/);
+  assert.equal(reply.files, undefined);
+});

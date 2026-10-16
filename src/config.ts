@@ -14,6 +14,8 @@ export interface JarvisConfig {
   memoryMessages: number;
   memoryTtlMs: number;
   musicChannelId: string;
+  /** Optional Giphy API key (`GIPHY_API_KEY`); without it gif sending falls back to links. */
+  giphyApiKey?: string | undefined;
 }
 
 export interface BotConfig {
@@ -77,6 +79,7 @@ export function loadJarvisConfig(env: NodeJS.ProcessEnv = process.env): JarvisCo
     memoryMessages: Math.min(50, intFromEnv(env, 'JARVIS_MEMORY_MESSAGES', 20)),
     memoryTtlMs: Math.max(1, intFromEnv(env, 'JARVIS_MEMORY_TTL_HOURS', 72)) * 3_600_000,
     musicChannelId: env.MUSIC_CHANNEL_ID?.trim() || '697224336460873761',
+    giphyApiKey: env.GIPHY_API_KEY?.trim() || undefined,
   };
 }
 
