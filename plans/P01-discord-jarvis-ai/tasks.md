@@ -1408,13 +1408,13 @@ set `blocked` and stop. A rejected commit message — follow the hook's text onc
 
 #### Step 4.5 — Role gate: only «Офісний NPC» and «Офісники»
 
-- **Status:** in-progress
+- **Status:** done
 - **Depends on:** Step 4.4
 - **Files:** `src/jarvis-discord.ts` (modify), `tests/jarvis-discord.test.ts` (modify), `src/help.ts` (modify: one sentence)
 - **Why:** Jarvis answers only staff with the two roles; others get a playful denial instead of silence or a model call.
 
 **Do:**
-- [ ] In `src/jarvis-discord.ts`, directly above the `handle` function (or `createJarvis` if `handle` is nested inside it), insert:
+- [x] In `src/jarvis-discord.ts`, directly above the `handle` function (or `createJarvis` if `handle` is nested inside it), insert:
 
 ```ts
 const ALLOWED_JARVIS_ROLES = ['Офісний NPC', 'Офісники'];
@@ -1425,7 +1425,7 @@ function hasJarvisRole(message: { member?: { roles: { cache: Map<string, { name:
   return [...roles.values()].some((role) => ALLOWED_JARVIS_ROLES.includes(role.name));
 }
 ```
-- [ ] In `handle`, right after the trigger parse yields a non-null question and before any limiter usage, insert:
+- [x] In `handle`, right after the trigger parse yields a non-null question and before any limiter usage, insert:
 
 ```ts
   if (!hasJarvisRole(message)) {
@@ -1433,19 +1433,19 @@ function hasJarvisRole(message: { member?: { roles: { cache: Map<string, { name:
     return true;
   }
 ```
-- [ ] In `src/help.ts`, at the end of the Jarvis description line (the one added in Step 4.3), append one space and: `Доступно учасникам з ролями «Офісний NPC» та «Офісники».`
-- [ ] In `tests/jarvis-discord.test.ts` append tests: (a) message with role `Офісники` reaches the agent; (b) message without roles gets the denial text, the agent is not called, and the reply carries `allowedMentions` `{ parse: [] }`; (c) message with `member: null` gets the denial.
+- [x] In `src/help.ts`, at the end of the Jarvis description line (the one added in Step 4.3), append one space and: `Доступно учасникам з ролями «Офісний NPC» та «Офісники».`
+- [x] In `tests/jarvis-discord.test.ts` append tests: (a) message with role `Офісники` reaches the agent; (b) message without roles gets the denial text, the agent is not called, and the reply carries `allowedMentions` `{ parse: [] }`; (c) message with `member: null` gets the denial.
 
 **Verify:**
-- [ ] From the bot repo: `node --import tsx --test --test-reporter=tap tests/jarvis-discord.test.ts` → exit code 0, output has `# fail 0`.
-- [ ] `npm run typecheck` → exit code 0.
+- [x] From the bot repo: `node --import tsx --test --test-reporter=tap tests/jarvis-discord.test.ts` → exit code 0, output has `# fail 0`.
+- [x] `npm run typecheck` → exit code 0.
 
 **Done when:** role-less users get the denial without a model call and staff pass through.
 
 **If it fails:** discord.js `roles.cache` is a `Collection`, not a `Map` — adapt the iteration (`roles.some` if available, else `[...roles.values()]`) once and note it; otherwise `blocked`.
 
 **Notes:**
-- (none yet)
+- 2026-10-16: виконано виконавцем `jarvis_p45_rolegate` (gpt-6-luna), прийнято головною сесією: discord-тести 9/9/0, сюїт 74/74/0, lint/typecheck/backend 0; коміт `Версія: 1.4.46`.
 
 ---
 
@@ -1977,6 +1977,7 @@ bash -c 'source scripts/utils.sh >/dev/null 2>&1; ssh_with_password_fallback "do
 | 2026-10-16 | 7.1r1 | reviewed | 6 кутів: 8 підтверджено, 3 відхилено |
 | 2026-10-16 | 7.1r3 | reviewed | 2 PASS, 1 новий Medium |
 | 2026-10-16 | 7.1 | done | ревʼю закрито, залишки: редиректи (прийнятий ризик), gate-тест (BACKLOG) |
+| 2026-10-16 | 4.5 | done | рольова брама, тести 9/9/0, сюїт 74/74/0, коміт 1.4.46 |
 | 2026-10-16 | 8.1 | blocked | ключі є, чекаю коміт `.env.prod` власника |
 | 2026-10-16 | 7.1fix3 | done | крапка FQDN, тести 10/10, сюїт 71/71/0 |
 | 2026-10-16 | 7.1c | done | коміт фіксів `Версія: 1.4.44` (11 файлів, включно з BACKLOG) |
