@@ -30,14 +30,20 @@ test('loads Jarvis defaults when enabled', () => {
   assert.equal(jarvis.webSearch, true);
   assert.equal(jarvis.timeoutMs, 90_000);
   assert.equal(jarvis.maxToolRounds, 4);
-  assert.equal(jarvis.userCooldownMs, 15_000);
-  assert.equal(jarvis.userDailyLimit, 40);
-  assert.equal(jarvis.maxConcurrent, 2);
+  assert.equal(jarvis.userCooldownMs, 5_000);
+  assert.equal(jarvis.userDailyLimit, 0);
+  assert.equal(jarvis.maxConcurrent, 3);
   assert.deepEqual(jarvis.channelIds, []);
-  assert.equal(jarvis.memoryMessages, 20);
+  assert.equal(jarvis.memoryMessages, 1000);
+  assert.equal(jarvis.memoryMaxTokens, 110000);
+  assert.equal(jarvis.memoryMaxChars, 330000);
   assert.equal(jarvis.memoryTtlMs, 72 * 3_600_000);
   assert.equal(jarvis.musicChannelId, '697224336460873761');
   assert.equal(jarvis.giphyApiKey, undefined);
+  assert.equal(jarvis.googleApiKey, undefined);
+  assert.equal(jarvis.googleCseId, undefined);
+  assert.equal(loadJarvisConfig({ JARVIS_ENABLED: 'true', OLLAMA_API_KEY: 'k', GOOGLE_API_KEY: ' g-1 ', GOOGLE_CSE_ID: ' cx-1 ' })?.googleApiKey, 'g-1');
+  assert.equal(loadJarvisConfig({ JARVIS_ENABLED: 'true', OLLAMA_API_KEY: 'k', GOOGLE_API_KEY: ' g-1 ', GOOGLE_CSE_ID: ' cx-1 ' })?.googleCseId, 'cx-1');
   assert.equal(loadJarvisConfig({ JARVIS_ENABLED: 'true', OLLAMA_API_KEY: 'k', GIPHY_API_KEY: ' giphy-1 ' })?.giphyApiKey, 'giphy-1');
 });
 

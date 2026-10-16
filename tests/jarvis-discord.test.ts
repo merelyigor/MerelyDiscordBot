@@ -1,16 +1,16 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { extractKeywords, isDiscordCdn, limitText, pickImageAttachments, searchServerMessages, splitForDiscord, createJarvis } from '../src/jarvis-discord.js';
+import { detectMediaKind, extractKeywords, formatChannelLines, isDiscordCdn, limitText, pickImageAttachments, searchServerMessages, splitForDiscord, createJarvis, transliterateUk } from '../src/jarvis-discord.js';
 import type { JarvisConfig } from '../src/config.js';
 import type { Client, Message } from 'discord.js';
 
 const jarvisConfig: JarvisConfig = {
   apiKeys: ['test-key'], baseUrl: 'https://ollama.com', model: 'model', fallbackModel: '', webSearch: false,
   timeoutMs: 1000, maxToolRounds: 2, userCooldownMs: 0, userDailyLimit: 0, maxConcurrent: 2, channelIds: [],
-  memoryMessages: 20, memoryTtlMs: 72 * 3_600_000, musicChannelId: '999',
+  memoryMessages: 20, memoryMaxTokens: 110000, memoryMaxChars: 330000, memoryTtlMs: 72 * 3_600_000, musicChannelId: '999',
 };
 
-function mockMessage(options: { id: string; content: string; attachment?: boolean; roleName?: string | null; memberNull?: boolean; guild?: unknown }, sent: unknown[]): Message<true> {
+function mockMessage(options: { id: string; content: string; attachment?: boolean; roleName?: string | null; memberNull?: boolean; guild?: unknown; username?: string }, sent: unknown[]): Message<true> {
   const channel = {
     isThread: () => false,
     sendTyping: async () => undefined,
@@ -19,7 +19,7 @@ function mockMessage(options: { id: string; content: string; attachment?: boolea
   const message = {
     id: options.id,
     content: options.content,
-    author: { id: `user-${options.id}` },
+    author: { id: `user-${options.id}`, username: options.username ?? `name-${options.id}` },
     member: options.memberNull ? null : { roles: { cache: new Map(options.roleName === null ? [] : [['role-1', { name: options.roleName ?? 'Офісники' }]]) } },
     channel,
     channelId: 'channel-1',
@@ -332,7 +332,7 @@ test('attaches a gif through the send_gif tool', async () => {
     }
     chatCalls += 1;
     const message = chatCalls === 1
-      ? { role: 'assistant', content: '', tool_calls: [{ function: { name: 'send_gif', arguments: { query: 'sixxen' } } }] }
+      ? { role: 'assistant', content: '', tool_calls: [{ function: { name: 'send_image', arguments: { query: 'sixxen', kind: 'gif' } } }] }
       : { role: 'assistant', content: 'Ось твоя гіфка!' };
     return new Response(JSON.stringify({ message }), { status: 200 });
   }) as typeof fetch;
@@ -354,7 +354,7 @@ test('falls back to a giphy link when no API key is set', async () => {
   const fetchImpl = (async () => {
     chatCalls += 1;
     const message = chatCalls === 1
-      ? { role: 'assistant', content: '', tool_calls: [{ function: { name: 'send_gif', arguments: { query: 'cat' } } }] }
+      ? { role: 'assistant', content: '', tool_calls: [{ function: { name: 'send_image', arguments: { query: 'cat', kind: 'gif' } } }] }
       : { role: 'assistant', content: 'Тримай: https://giphy.com/search/cat-gifs' };
     return new Response(JSON.stringify({ message }), { status: 200 });
   }) as typeof fetch;
@@ -367,4 +367,289 @@ test('falls back to a giphy link when no API key is set', async () => {
   const reply = sent[0] as { content: string; files?: unknown[] };
   assert.match(reply.content, /giphy\.com/);
   assert.equal(reply.files, undefined);
+});
+
+test('attaches a photo through the send_image tool', async () => {
+  const sent: unknown[] = [];
+  const photoBytes = Buffer.from('fake-jpeg');
+  let chatCalls = 0;
+  const fetchImpl = (async (input: string | URL | Request) => {
+    const url = String(input);
+    if (url.includes('wikipedia.org')) {
+      return new Response(JSON.stringify({
+        query: { pages: [{ title: 'Spider-Man', thumbnail: { source: 'https://upload.wikimedia.org/wikipedia/en/test-poster.jpg' } }] },
+      }), { status: 200 });
+    }
+    if (url.includes('upload.wikimedia.org')) {
+      return new Response(photoBytes, { status: 200 });
+    }
+    chatCalls += 1;
+    const message = chatCalls === 1
+      ? { role: 'assistant', content: '', tool_calls: [{ function: { name: 'send_image', arguments: { query: 'Spider-Man 2002 poster', kind: 'photo' } } }] }
+      : { role: 'assistant', content: 'Ось обкладинка!' };
+    return new Response(JSON.stringify({ message }), { status: 200 });
+  }) as typeof fetch;
+  const jarvis = createJarvis(jarvisConfig, { user: { id: 'bot' } } as unknown as Client, fetchImpl);
+
+  const result = await jarvis.handle(mockMessage({ id: 'photo-1', content: 'Джарвіс, покажи обкладинку фільму Людина-павук 2002' }, sent));
+
+  assert.equal(result, true);
+  const reply = sent[0] as { content: string; files?: Array<{ name: string }> };
+  assert.match(reply.content, /обкладинка/);
+  assert.equal(reply.files?.length, 1);
+  assert.match(reply.files?.[0]?.name ?? '', /\.jpg$/);
+});
+
+test('detects gif versus photo intent', () => {
+  assert.equal(detectMediaKind('кинь гіфку', 'auto'), 'gif');
+  assert.equal(detectMediaKind('siccsevven meme', 'auto'), 'gif');
+  assert.equal(detectMediaKind('покажи обкладинку фільму', 'auto'), 'photo');
+  assert.equal(detectMediaKind('що завгодно', 'gif'), 'gif');
+  assert.equal(detectMediaKind('що завгодно', 'photo'), 'photo');
+});
+
+test('attaches up to four photos from google image search', async () => {
+  const sent: unknown[] = [];
+  let chatCalls = 0;
+  const fetchImpl = (async (input: string | URL | Request) => {
+    const url = String(input);
+    if (url.includes('www.googleapis.com')) {
+      return new Response(JSON.stringify({
+        items: [
+          { link: 'https://example.com/mcqueen1.jpg', mime: 'image/jpeg' },
+          { link: 'https://example.com/mcqueen2.jpg', mime: 'image/jpeg' },
+        ],
+      }), { status: 200 });
+    }
+    if (url.includes('example.com')) {
+      return new Response(Buffer.from('fake-jpeg'), { status: 200 });
+    }
+    chatCalls += 1;
+    const message = chatCalls === 1
+      ? { role: 'assistant', content: '', tool_calls: [{ function: { name: 'send_image', arguments: { query: 'Lightning McQueen', kind: 'photo', count: 2 } } }] }
+      : { role: 'assistant', content: 'Ось фото!' };
+    return new Response(JSON.stringify({ message }), { status: 200 });
+  }) as typeof fetch;
+  const configWithGoogle = { ...jarvisConfig, googleApiKey: 'test-google-key', googleCseId: 'test-cx' };
+  const jarvis = createJarvis(configWithGoogle, { user: { id: 'bot' } } as unknown as Client, fetchImpl);
+
+  const result = await jarvis.handle(mockMessage({ id: 'photo-2', content: 'Джарвіс, покажи фото Молнії Макквін' }, sent));
+
+  assert.equal(result, true);
+  const reply = sent[0] as { content: string; files?: Array<{ name: string }> };
+  assert.equal(reply.files?.length, 2);
+});
+
+test('reads only recent messages when hours are given', async () => {
+  const sent: unknown[] = [];
+  const now = Date.now();
+  const historyChannel = {
+    isTextBased: () => true,
+    messages: {
+      fetch: async () => new Map([
+        ['m1', { author: { username: 'Old' }, content: 'давно було', createdTimestamp: now - 5 * 3_600_000 }],
+        ['m2', { author: { username: 'Ann' }, content: 'щойно писали', createdTimestamp: now - 30 * 60_000 }],
+        ['m3', { author: { username: 'Bob' }, content: 'і ще', createdTimestamp: now - 10 * 60_000 }],
+      ]),
+    },
+  };
+  const guild = {
+    channels: {
+      cache: new Map([['111', historyChannel]]),
+      fetch: async (id: string) => (id === '111' ? historyChannel : null),
+    },
+  };
+  let chatCalls = 0;
+  const fetchImpl = (async () => {
+    chatCalls += 1;
+    const message = chatCalls === 1
+      ? { role: 'assistant', content: '', tool_calls: [{ function: { name: 'read_channel', arguments: { channel_id: '<#111>', hours: 2 } } }] }
+      : { role: 'assistant', content: 'Переказ свіжого.' };
+    return new Response(JSON.stringify({ message }), { status: 200 });
+  }) as typeof fetch;
+  const jarvis = createJarvis(jarvisConfig, { user: { id: 'bot' } } as unknown as Client, fetchImpl);
+
+  const result = await jarvis.handle(mockMessage({ id: 'read-hours', content: 'Джарвіс, що писали в каналі за останні 2 години?', guild }, sent));
+
+  assert.equal(result, true);
+  assert.equal(chatCalls, 2);
+  assert.match((sent[0] as { content: string }).content, /Переказ свіжого/);
+});
+
+test('formatChannelLines keeps only the requested time window', () => {
+  const now = Date.now();
+  const entries = [
+    { id: 'm1', author: { username: 'Old' }, content: 'давно було', createdTimestamp: now - 5 * 3_600_000 },
+    { id: 'm2', author: { username: 'Ann' }, content: 'щойно писали', createdTimestamp: now - 30 * 60_000 },
+  ];
+  const recent = formatChannelLines(entries, 'g1', 'c1', 20, now - 2 * 3_600_000);
+  assert.ok(recent.includes('щойно писали'));
+  assert.ok(!recent.includes('давно було'));
+  const all = formatChannelLines(entries, 'g1', 'c1', 20, 0);
+  assert.ok(all.includes('давно було'));
+});
+
+test('reads the current channel when no channel id is given', async () => {
+  const sent: unknown[] = [];
+  const currentChannel = {
+    isTextBased: () => true,
+    messages: {
+      fetch: async () => new Map([
+        ['m1', { author: { username: 'Ann' }, content: 'тут писали' }],
+      ]),
+    },
+  };
+  const guild = {
+    channels: {
+      cache: new Map([['channel-1', currentChannel]]),
+      fetch: async (id: string) => (id === 'channel-1' ? currentChannel : null),
+    },
+  };
+  let chatCalls = 0;
+  const fetchImpl = (async () => {
+    chatCalls += 1;
+    const message = chatCalls === 1
+      ? { role: 'assistant', content: '', tool_calls: [{ function: { name: 'read_channel', arguments: { channel_id: '', hours: 5 } } }] }
+      : { role: 'assistant', content: 'Підсумок: Ann писала.' };
+    return new Response(JSON.stringify({ message }), { status: 200 });
+  }) as typeof fetch;
+  const jarvis = createJarvis(jarvisConfig, { user: { id: 'bot' } } as unknown as Client, fetchImpl);
+
+  const result = await jarvis.handle(mockMessage({ id: 'read-here', content: 'Джарвіс, прочитай повідомлення вище за останні 5 годин і зроби підсумок списком', guild }, sent));
+
+  assert.equal(result, true);
+  assert.equal(chatCalls, 2);
+  assert.match((sent[0] as { content: string }).content, /Підсумок/);
+});
+
+test('ignores messages without a trigger outside replies to Jarvis', async () => {
+  const sent: unknown[] = [];
+  let modelCalls = 0;
+  const fetchImpl = (async () => {
+    modelCalls += 1;
+    return new Response(JSON.stringify({ message: { role: 'assistant', content: 'ok' } }), { status: 200 });
+  }) as typeof fetch;
+  const jarvis = createJarvis(jarvisConfig, { user: { id: 'bot' } } as unknown as Client, fetchImpl);
+
+  assert.equal(await jarvis.handle(mockMessage({ id: 'sess', content: 'Джарвіс, привіт' }, sent)), true);
+  assert.equal(await jarvis.handle(mockMessage({ id: 'sess', content: 'а ще розкажи детальніше' }, sent)), false);
+  assert.equal(modelCalls, 1);
+});
+
+test('remembers the previous triggered question in the user session', async () => {
+  const sent: unknown[] = [];
+  const bodies: string[] = [];
+  const fetchImpl = (async (_input: string | URL | Request, init?: RequestInit) => {
+    bodies.push(String(init?.body ?? ''));
+    return new Response(JSON.stringify({ message: { role: 'assistant', content: 'ok' } }), { status: 200 });
+  }) as typeof fetch;
+  const jarvis = createJarvis(jarvisConfig, { user: { id: 'bot' } } as unknown as Client, fetchImpl);
+
+  assert.equal(await jarvis.handle(mockMessage({ id: 't1', content: 'Джарвіс тест 123' }, sent)), true);
+  assert.equal(await jarvis.handle(mockMessage({ id: 't1', content: 'Джарвіс тест 999' }, sent)), true);
+
+  assert.equal(bodies.length, 2);
+  assert.ok(bodies[1]?.includes('тест 123'), 'second request carries the first question in history');
+});
+
+test('transliterates ukrainian queries for latin-only search', () => {
+  assert.equal(transliterateUk('коломойського смішну'), 'kolomoyskoho smishnu');
+});
+
+test('retries gif search with a transliterated query', async () => {
+  const sent: unknown[] = [];
+  let chatCalls = 0;
+  const fetchImpl = (async (input: string | URL | Request) => {
+    const url = String(input);
+    if (url.includes('api.giphy.com')) {
+      const empty = !url.includes('q=kolomoyskoho');
+      return new Response(JSON.stringify({ data: empty ? [] : [{ images: { downsized: { url: 'https://media.giphy.com/x.gif' } } }] }), { status: 200 });
+    }
+    if (url.includes('media.giphy.com')) {
+      return new Response(Buffer.from('GIF89a'), { status: 200 });
+    }
+    chatCalls += 1;
+    const message = chatCalls === 1
+      ? { role: 'assistant', content: '', tool_calls: [{ function: { name: 'send_image', arguments: { query: 'коломойського', kind: 'gif' } } }] }
+      : { role: 'assistant', content: 'Ось!' };
+    return new Response(JSON.stringify({ message }), { status: 200 });
+  }) as typeof fetch;
+  const configWithGif = { ...jarvisConfig, giphyApiKey: 'test-giphy-key' };
+  const jarvis = createJarvis(configWithGif, { user: { id: 'bot' } } as unknown as Client, fetchImpl);
+
+  const result = await jarvis.handle(mockMessage({ id: 'gif-retry', content: 'Джарвіс, кинь гіфку коломойського' }, sent));
+
+  assert.equal(result, true);
+  assert.equal((sent[0] as { files?: unknown[] }).files?.length, 1);
+});
+
+test('adds an honesty note when media was requested but nothing attached', async () => {
+  const sent: unknown[] = [];
+  let chatCalls = 0;
+  const fetchImpl = (async (input: string | URL | Request) => {
+    const url = String(input);
+    if (url.includes('api.giphy.com')) {
+      return new Response(JSON.stringify({ data: [] }), { status: 200 });
+    }
+    chatCalls += 1;
+    const message = chatCalls === 1
+      ? { role: 'assistant', content: '', tool_calls: [{ function: { name: 'send_image', arguments: { query: 'xyz-no-such-gif', kind: 'gif' } } }] }
+      : { role: 'assistant', content: 'Надіслав найкраще!' };
+    return new Response(JSON.stringify({ message }), { status: 200 });
+  }) as typeof fetch;
+  const configWithGif = { ...jarvisConfig, giphyApiKey: 'test-giphy-key' };
+  const jarvis = createJarvis(configWithGif, { user: { id: 'bot' } } as unknown as Client, fetchImpl);
+
+  const result = await jarvis.handle(mockMessage({ id: 'gif-honest', content: 'Джарвіс, кинь гіфку' }, sent));
+
+  assert.equal(result, true);
+  assert.match((sent[0] as { content: string }).content, /не вийшло/);
+});
+
+test('allows the МАДІРУТАР role by name in any letter case', async () => {
+  const sent: unknown[] = [];
+  const fetchImpl = (async () => new Response(JSON.stringify({ message: { role: 'assistant', content: 'Вітаю!' } }), { status: 200 })) as typeof fetch;
+  const jarvis = createJarvis(jarvisConfig, { user: { id: 'bot' } } as unknown as Client, fetchImpl);
+
+  const result = await jarvis.handle(mockMessage({ id: 'madirutar', content: 'Джарвіс, привіт', roleName: 'мадірутар' }, sent));
+
+  assert.equal(result, true);
+  assert.equal((sent[0] as { content: string }).content, 'Вітаю!');
+});
+
+test('shares one continuous history across users', async () => {
+  const seen: string[][] = [];
+  const fetchImpl = (async (_url: unknown, init?: { body?: unknown }) => {
+    try {
+      const body = JSON.parse(String((init as { body?: unknown } | undefined)?.body ?? '{}')) as { messages?: { content?: unknown }[] };
+      if (Array.isArray(body.messages)) seen.push(body.messages.map((m) => String(m.content ?? '')));
+    } catch {
+      // ignore bodies that are not model chat calls
+    }
+    return new Response(JSON.stringify({ message: { role: 'assistant', content: 'ok' } }), { status: 200 });
+  }) as typeof fetch;
+  const jarvis = createJarvis(jarvisConfig, { user: { id: 'bot' } } as unknown as Client, fetchImpl);
+
+  const first: unknown[] = [];
+  await jarvis.handle(mockMessage({ id: 'first', content: 'Джарвіс, перше питання', username: 'Igor' }, first));
+  const second: unknown[] = [];
+  await jarvis.handle(mockMessage({ id: 'second', content: 'Джарвіс, друге питання', username: 'Petro' }, second));
+
+  assert.equal(seen.length, 2);
+  assert.ok(seen[1]?.some((content) => content.includes('Igor: перше питання')), 'second answer sees the first user question');
+});
+
+test('allows a whitelisted role id regardless of its name', async () => {
+  const sent: unknown[] = [];
+  const fetchImpl = (async () => new Response(JSON.stringify({ message: { role: 'assistant', content: 'Вітаю!' } }), { status: 200 })) as typeof fetch;
+  const jarvis = createJarvis(jarvisConfig, { user: { id: 'bot' } } as unknown as Client, fetchImpl);
+  const message = mockMessage({ id: 'role-id', content: 'Джарвіс, привіт', roleName: 'Будь-яка' }, sent);
+  (message as unknown as { member: unknown }).member = {
+    roles: { cache: new Map([['782518233239650355', { name: 'Будь-яка' }]]) },
+  };
+
+  const result = await jarvis.handle(message);
+
+  assert.equal(result, true);
+  assert.equal((sent[0] as { content: string }).content, 'Вітаю!');
 });

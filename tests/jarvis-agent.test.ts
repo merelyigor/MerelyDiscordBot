@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { askJarvis, buildSystemPrompt, isAllowedFetchUrl, needsForcedSearch, needsServerSearch, type JarvisAgentSettings, type JarvisRequest } from '../src/jarvis-agent.js';
+import { askJarvis, buildSystemPrompt, isAllowedFetchUrl, needsForcedSearch, needsServerSearch, summarizeDigest, type JarvisAgentSettings, type JarvisRequest } from '../src/jarvis-agent.js';
 import { OllamaError, type OllamaChatResult, type OllamaClient, type OllamaMessage, type OllamaTool } from '../src/ollama.js';
 
 const settings: JarvisAgentSettings = { model: 'gemma4:31b', fallbackModel: 'gpt-oss:120b', webSearch: true, maxToolRounds: 4 };
@@ -99,6 +99,19 @@ test('does not send an image-only request to the text-only fallback', async () =
   const { client, calls } = fakeClient(() => new OllamaError('Ollama /api/chat HTTP 503: busy', 503, true));
   await assert.rejects(askJarvis(client, settings, { ...request, question: '', images: ['aW1hZ2U='] }), OllamaError);
   assert.equal(calls.length, 1);
+});
+
+test('summarizes a digest with the reserve model', async () => {
+  const { client, calls } = fakeClient(() => answer('Стисло: q1, q2.'));
+  const summary = await summarizeDigest(client, settings, 'довгий конспект');
+  assert.equal(summary, 'Стисло: q1, q2.');
+  assert.equal(calls[0]?.model, 'gpt-oss:120b');
+  assert.equal(calls[0]?.tools, undefined);
+});
+
+test('keeps the deterministic digest when summarizing fails', async () => {
+  const { client } = fakeClient(() => { throw new OllamaError('down', null, true); });
+  assert.equal(await summarizeDigest(client, settings, 'довгий конспект'), null);
 });
 
 test('detects an explicit search intent', () => {

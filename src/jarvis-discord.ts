@@ -1,9 +1,9 @@
 import type { Client, Message } from 'discord.js';
 import type { JarvisConfig } from './config.js';
-import { askJarvis } from './jarvis-agent.js';
+import { askJarvis, summarizeDigest } from './jarvis-agent.js';
 import { JarvisLimiter, type LimitResult } from './jarvis-limits.js';
-import { JarvisMemory, mergeHistories } from './jarvis-memory.js';
-import type { GifAttachment, JarvisDiscordTools } from './jarvis-agent.js';
+import { fitHistoryToChars, JarvisMemory, mergeHistories } from './jarvis-memory.js';
+import { isAllowedFetchUrl, type JarvisDiscordTools, type MediaAttachment } from './jarvis-agent.js';
 import { parseJarvisTrigger } from './jarvis-trigger.js';
 import { OllamaError, createOllamaClient, type OllamaMessage } from './ollama.js';
 
@@ -13,21 +13,29 @@ const MAX_IMAGES = 3;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
 const IMAGE_HOSTS = new Set(['cdn.discordapp.com', 'media.discordapp.net']);
-const HISTORY_LIMIT = 6;
 const GIPHY_SEARCH_URL = 'https://api.giphy.com/v1/gifs/search';
-const GIF_MAX_BYTES = 8 * 1024 * 1024;
-const MAX_GIF_ATTACHMENTS = 2;
+const MEDIA_MAX_BYTES = 8 * 1024 * 1024;
+const MAX_MEDIA_ATTACHMENTS = 4;
+const GOOGLE_IMAGE_SEARCH_URL = 'https://www.googleapis.com/customsearch/v1';
 const GIPHY_MEDIA_SUFFIX = '.giphy.com';
+const WIKIPEDIA_API_HOSTS = ['uk.wikipedia.org', 'en.wikipedia.org'];
+const WIKIMEDIA_MEDIA_HOST = 'upload.wikimedia.org';
 const REMEMBERED_ANSWERS = 500;
+const SUMMARY_UPGRADE_MIN_CHARS = 1500;
+const SUMMARY_MIN_INTERVAL_MS = 10 * 60_000;
 const TYPING_INTERVAL_MS = 8000;
 const IMAGE_DOWNLOAD_TIMEOUT_MS = 15_000;
 const USAGE_HINT = 'Напиши питання після слова «Джарвіс», наприклад: «Джарвіс, що таке квантова механіка?»';
-const ALLOWED_JARVIS_ROLES = ['Офісний NPC', 'Офісники'];
+const ALLOWED_JARVIS_ROLES = ['Офісний NPC', 'Офісники', 'МАДІРУТАР'];
+const ALLOWED_JARVIS_ROLE_IDS = new Set(['782518233239650355']);
 
 function hasJarvisRole(message: { member?: { roles: { cache: Map<string, { name: string }> } } | null }): boolean {
   const roles = message.member?.roles.cache;
   if (!roles) return false;
-  return [...roles.values()].some((role) => ALLOWED_JARVIS_ROLES.includes(role.name));
+  const allowedNames = ALLOWED_JARVIS_ROLES.map((name) => name.toLocaleLowerCase('uk-UA'));
+  return [...roles.entries()].some(
+    ([id, role]) => ALLOWED_JARVIS_ROLE_IDS.has(id) || allowedNames.includes(role.name.toLocaleLowerCase('uk-UA')),
+  );
 }
 
 export interface AttachmentInfo {
@@ -90,6 +98,58 @@ export function isGiphyMediaUrl(url: string): boolean {
   } catch {
     return false;
   }
+}
+
+const UK_LATIN: Record<string, string> = {
+  а: 'a', б: 'b', в: 'v', г: 'h', ґ: 'g', д: 'd', е: 'e', є: 'ye', ж: 'zh',
+  з: 'z', и: 'y', і: 'i', ї: 'yi', й: 'y', к: 'k', л: 'l', м: 'm', н: 'n',
+  о: 'o', п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f', х: 'kh', ц: 'ts',
+  ч: 'ch', ш: 'sh', щ: 'shch', ю: 'yu', я: 'ya', ь: '', '’': '', "'": '',
+};
+
+/** Ukrainian → latin for services that only understand english queries. */
+export function transliterateUk(text: string): string {
+  return [...text].map((char) => UK_LATIN[char.toLocaleLowerCase('uk-UA')] ?? char).join('');
+}
+
+export function isWikimediaMediaUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:' && parsed.hostname === WIKIMEDIA_MEDIA_HOST;
+  } catch {
+    return false;
+  }
+}
+
+/** gif for animations/memes, photo for stills; auto detects by query words. */
+export function detectMediaKind(query: string, hint: string): 'gif' | 'photo' {
+  const normalized = hint.trim().toLocaleLowerCase('uk-UA');
+  if (normalized === 'gif') return 'gif';
+  if (normalized === 'photo') return 'photo';
+  return /гіф|gif|мем|meme|анімац|анімован|стікер|sticker/iu.test(query) ? 'gif' : 'photo';
+}
+
+export interface ChannelHistoryEntry {
+  id: string;
+  content?: string | null;
+  author?: { username?: string } | null;
+  createdTimestamp?: number;
+}
+
+/** Newest-first input, oldest-first output: time filter, count limit, Discord links. */
+export function formatChannelLines(
+  entries: ChannelHistoryEntry[],
+  guildId: string,
+  channelId: string,
+  limit: number,
+  since: number,
+): string {
+  const lines = [...entries]
+    .reverse()
+    .filter((entry) => since <= 0 || typeof entry.createdTimestamp !== 'number' || entry.createdTimestamp >= since)
+    .slice(-Math.min(20, Math.max(1, limit)))
+    .map((entry) => `${entry.author?.username ?? '?'}: ${entry.content ?? ''} — https://discord.com/channels/${guildId}/${channelId}/${entry.id}`.slice(0, 500));
+  return lines.join('\n').slice(0, 4000);
 }
 
 export function limitText(result: Exclude<LimitResult, { kind: 'ok' }>): string {
@@ -180,8 +240,28 @@ export async function searchServerMessages(
 export function createJarvis(config: JarvisConfig, client: Client, fetchImpl: typeof fetch = fetch): Jarvis {
   const ollama = createOllamaClient({ baseUrl: config.baseUrl, apiKeys: config.apiKeys, timeoutMs: config.timeoutMs, fetchImpl });
   const limiter = new JarvisLimiter(config.userCooldownMs, config.userDailyLimit, config.maxConcurrent);
-  const memory = new JarvisMemory(config.memoryMessages, config.memoryTtlMs);
+  const memory = new JarvisMemory(config.memoryMessages, config.memoryTtlMs, config.memoryMaxChars);
   const answerIds: string[] = [];
+  let summaryInFlight = false;
+  let lastSummaryAt = 0;
+
+  /** Quality pass over the deterministic digest, in the background so answers stay fast. */
+  async function maybeUpgradeDigest(): Promise<void> {
+    const digest = memory.digestText();
+    if (digest === null || digest.length < SUMMARY_UPGRADE_MIN_CHARS || summaryInFlight || Date.now() - lastSummaryAt < SUMMARY_MIN_INTERVAL_MS) return;
+    summaryInFlight = true;
+    try {
+      const summary = await summarizeDigest(ollama, config, digest);
+      if (summary !== null) {
+        memory.applyUpgradedDigest(summary);
+        lastSummaryAt = Date.now();
+      }
+    } catch {
+      // keep the deterministic digest
+    } finally {
+      summaryInFlight = false;
+    }
+  }
 
   function rememberAnswer(id: string): void {
     answerIds.push(id);
@@ -203,7 +283,7 @@ export function createJarvis(config: JarvisConfig, client: Client, fetchImpl: ty
   async function buildHistory(message: Message<true>): Promise<OllamaMessage[]> {
     const history: OllamaMessage[] = [];
     let current: Message = message;
-    while (current.reference?.messageId && history.length < HISTORY_LIMIT) {
+    while (current.reference?.messageId && history.length < config.memoryMessages) {
       const previous = await current.fetchReference().catch(() => null);
       if (!previous) break;
       const fromBot = previous.author.id === client.user?.id;
@@ -216,32 +296,97 @@ export function createJarvis(config: JarvisConfig, client: Client, fetchImpl: ty
 
 
   function buildDiscordTools(message: Message<true>): JarvisDiscordTools {
-    const pendingGifs: GifAttachment[] = [];
+    const pendingMedia: MediaAttachment[] = [];
+    let mediaAttempts = 0;
+
+    async function downloadMedia(url: string): Promise<Buffer | null> {
+      const response = await fetchImpl(url, { signal: AbortSignal.timeout(IMAGE_DOWNLOAD_TIMEOUT_MS) }).catch(() => null);
+      if (!response?.ok) return null;
+      const buffer = Buffer.from(await response.arrayBuffer());
+      if (buffer.byteLength === 0 || buffer.byteLength > MEDIA_MAX_BYTES) return null;
+      return buffer;
+    }
+
+    function pushMedia(kind: 'gif' | 'photo', url: string, data: Buffer): string {
+      const ext = kind === 'gif' ? 'gif' : (/\.(jpe?g|png|webp)(?:[?#]|$)/iu.exec(url)?.[1]?.toLowerCase().replace('jpeg', 'jpg') ?? 'jpg');
+      const filename = `jarvis-image-${pendingMedia.length + 1}.${ext}`;
+      pendingMedia.push({ filename, data });
+      return filename;
+    }
 
     async function fetchGifAttachment(query: string): Promise<string> {
       const q = query.trim().slice(0, 100);
       if (!q) return 'error: empty query';
       if (!config.giphyApiKey) return 'error: gif search is unavailable (GIPHY_API_KEY is not set) — give a giphy.com search page link instead';
-      if (pendingGifs.length >= MAX_GIF_ATTACHMENTS) return 'error: gif limit reached for this answer';
-      const params = new URLSearchParams({ api_key: config.giphyApiKey, q, limit: '3', rating: 'g' });
-      const search = await fetchImpl(`${GIPHY_SEARCH_URL}?${params}`, { signal: AbortSignal.timeout(IMAGE_DOWNLOAD_TIMEOUT_MS) }).catch(() => null);
-      if (!search?.ok) return 'error: gif search failed';
-      const payload = (await search.json().catch(() => null)) as {
-        data?: Array<{ images?: Record<string, { url?: string } | undefined> }>;
-      } | null;
-      for (const item of payload?.data ?? []) {
-        const url = [item.images?.downsized?.url, item.images?.fixed_height?.url, item.images?.original?.url]
-          .find((candidate): candidate is string => typeof candidate === 'string' && isGiphyMediaUrl(candidate));
-        if (!url) continue;
-        const response = await fetchImpl(url, { signal: AbortSignal.timeout(IMAGE_DOWNLOAD_TIMEOUT_MS) }).catch(() => null);
-        if (!response?.ok) continue;
-        const buffer = Buffer.from(await response.arrayBuffer());
-        if (buffer.byteLength === 0 || buffer.byteLength > GIF_MAX_BYTES) continue;
-        const filename = `jarvis-gif-${pendingGifs.length + 1}.gif`;
-        pendingGifs.push({ filename, data: buffer });
-        return `attached ${filename} for "${q}"; mention it briefly in the answer text`;
+      if (pendingMedia.length >= MAX_MEDIA_ATTACHMENTS) return 'error: media limit reached for this answer';
+      const attempts = [q, transliterateUk(q)].filter((variant, index, all) => variant && all.indexOf(variant) === index);
+      for (const attempt of attempts) {
+        const params = new URLSearchParams({ api_key: config.giphyApiKey, q: attempt, limit: '3', rating: 'g' });
+        const search = await fetchImpl(`${GIPHY_SEARCH_URL}?${params}`, { signal: AbortSignal.timeout(IMAGE_DOWNLOAD_TIMEOUT_MS) }).catch(() => null);
+        if (!search?.ok) continue;
+        const payload = (await search.json().catch(() => null)) as {
+          data?: Array<{ images?: Record<string, { url?: string } | undefined> }>;
+        } | null;
+        for (const item of payload?.data ?? []) {
+          const url = [item.images?.downsized?.url, item.images?.fixed_height?.url, item.images?.original?.url]
+            .find((candidate): candidate is string => typeof candidate === 'string' && isGiphyMediaUrl(candidate));
+          if (!url) continue;
+          const data = await downloadMedia(url);
+          if (!data) continue;
+          const filename = pushMedia('gif', url, data);
+          return `attached ${filename} for "${q}"; mention it briefly in the answer text`;
+        }
       }
       return 'error: no suitable gif found';
+    }
+
+    async function fetchPhotoAttachment(query: string, count: number): Promise<string> {
+      const q = query.trim().slice(0, 100);
+      if (!q) return 'error: empty query';
+      if (pendingMedia.length >= MAX_MEDIA_ATTACHMENTS) return 'error: media limit reached for this answer';
+      const want = Math.min(MAX_MEDIA_ATTACHMENTS - pendingMedia.length, Math.max(1, count));
+      const attached: string[] = [];
+      if (config.googleApiKey && config.googleCseId) {
+        const params = new URLSearchParams({
+          key: config.googleApiKey, cx: config.googleCseId, q,
+          searchType: 'image', num: String(Math.min(10, Math.max(1, want))), safe: 'active',
+        });
+        const search = await fetchImpl(`${GOOGLE_IMAGE_SEARCH_URL}?${params}`, { signal: AbortSignal.timeout(IMAGE_DOWNLOAD_TIMEOUT_MS) }).catch(() => null);
+        const payload = search?.ok ? (await search.json().catch(() => null)) as {
+          items?: Array<{ link?: string; mime?: string }>;
+        } | null : null;
+        for (const item of payload?.items ?? []) {
+          if (attached.length >= want) break;
+          const url = item.link;
+          if (typeof url !== 'string' || !isAllowedFetchUrl(url)) continue;
+          const data = await downloadMedia(url);
+          if (!data) continue;
+          attached.push(pushMedia('photo', url, data));
+        }
+      }
+      for (const host of WIKIPEDIA_API_HOSTS) {
+        if (attached.length >= want) break;
+        const params = new URLSearchParams({
+          action: 'query', format: 'json', formatversion: '2',
+          generator: 'search', gsrsearch: q, gsrlimit: '5',
+          prop: 'pageimages', pithumbsize: '1000', pilimit: '5',
+        });
+        const search = await fetchImpl(`https://${host}/w/api.php?${params}`, { signal: AbortSignal.timeout(IMAGE_DOWNLOAD_TIMEOUT_MS) }).catch(() => null);
+        if (!search?.ok) continue;
+        const payload = (await search.json().catch(() => null)) as {
+          query?: { pages?: Array<{ thumbnail?: { source?: string } }> };
+        } | null;
+        for (const page of payload?.query?.pages ?? []) {
+          if (attached.length >= want) break;
+          const url = page.thumbnail?.source;
+          if (typeof url !== 'string' || !isWikimediaMediaUrl(url)) continue;
+          const data = await downloadMedia(url);
+          if (!data) continue;
+          attached.push(pushMedia('photo', url, data));
+        }
+      }
+      if (attached.length === 0) return 'error: no suitable image found';
+      return `attached ${attached.join(', ')} for "${q}"; mention briefly in the answer text`;
     }
 
     async function fetchTextChannel(id: string) {
@@ -252,19 +397,19 @@ export function createJarvis(config: JarvisConfig, client: Client, fetchImpl: ty
       return channel;
     }
     return {
-      async readChannel(channelId: string, limit: number): Promise<string> {
-        const id = /<#(\d+)>/.exec(channelId)?.[1] ?? channelId.trim();
+      async readChannel(channelId: string, limit: number, hours?: number): Promise<string> {
+        const raw = /<#(\d+)>/.exec(channelId)?.[1] ?? channelId.trim();
+        const id = !raw || /^(this|here|current|цей|тут|цей чат)$/iu.test(raw) ? message.channelId : raw;
         if (!/^\d+$/.test(id)) return 'error: bad channel id';
         const channel = await fetchTextChannel(id);
         if (!channel) return 'error: channel not found or not readable';
-        const messages = await channel.messages.fetch({ limit: Math.min(20, Math.max(1, limit)) }).catch(() => null);
+        const fetchLimit = hours !== undefined ? 100 : Math.min(20, Math.max(1, limit));
+        const messages = await channel.messages.fetch({ limit: fetchLimit }).catch(() => null);
         if (!messages) return 'error: cannot read history (missing permission?)';
         const guildId = message.guildId ?? message.guild?.id ?? '@me';
-        const lines = [...messages.values()]
-          .reverse()
-          .map((entry) => `${entry.author?.username ?? '?'}: ${entry.content ?? ''} — https://discord.com/channels/${guildId}/${channel.id}/${entry.id}`.slice(0, 500));
-        const text = lines.join('\n').slice(0, 4000);
-        return text || 'channel is empty';
+        const since = hours !== undefined ? Date.now() - hours * 3_600_000 : 0;
+        const text = formatChannelLines([...messages.values()], guildId, channel.id, limit, since);
+        return text || 'nothing found in this time window';
       },
       async playMusic(query: string): Promise<string> {
         const q = query.trim().slice(0, 200);
@@ -285,9 +430,15 @@ export function createJarvis(config: JarvisConfig, client: Client, fetchImpl: ty
           query,
         );
       },
-      pendingGifs,
-      async sendGif(query: string): Promise<string> {
-        return fetchGifAttachment(query);
+      pendingMedia,
+      get mediaAttempts(): number {
+        return mediaAttempts;
+      },
+      async sendImage(query: string, kind?: string, count?: number): Promise<string> {
+        mediaAttempts += 1;
+        return detectMediaKind(query, kind ?? 'auto') === 'gif'
+          ? fetchGifAttachment(query)
+          : fetchPhotoAttachment(query, count ?? 1);
       },
     };
   }
@@ -301,7 +452,7 @@ export function createJarvis(config: JarvisConfig, client: Client, fetchImpl: ty
       const channelId = message.channel.isThread() ? (message.channel.parentId ?? message.channelId) : message.channelId;
       if (config.channelIds.length > 0 && !config.channelIds.includes(channelId)) return false;
       if (!hasJarvisRole(message)) {
-        await message.reply({ content: 'Ой, а тебе нема в списку допущених до моїх мізків! Джарвіс відповідає лише Офісним NPC та Офісникам — гукни адміністратора сервера, хай видасть роль.', allowedMentions: { parse: [] } });
+        await message.reply({ content: 'Ой, а тебе нема в списку допущених до моїх мізків! Джарвіс відповідає лише учасникам з дозволених ролей — гукни адміністратора сервера, хай видасть роль.', allowedMentions: { parse: [] } });
         return true;
       }
       const imageUrls = pickImageAttachments([...message.attachments.values()].map((attachment) => ({
@@ -321,33 +472,41 @@ export function createJarvis(config: JarvisConfig, client: Client, fetchImpl: ty
       const typing = setInterval(() => void message.channel.sendTyping().catch(() => undefined), TYPING_INTERVAL_MS);
       try {
         const [images, threadHistory] = await Promise.all([downloadImages(imageUrls), buildHistory(message)]);
-        const history = mergeHistories(memory.recall(message.author.id), threadHistory, config.memoryMessages + HISTORY_LIMIT);
+        const merged = mergeHistories(memory.recall(), threadHistory, config.memoryMessages * 2);
+        const history = fitHistoryToChars(merged, config.memoryMaxChars);
+        const digest = memory.digestText();
+        const fullHistory = digest === null ? history : [{ role: 'system', content: digest } as OllamaMessage, ...history];
         if (!question.trim() && imageUrls.length > 0 && images.length === 0) {
           await message.reply({ content: 'Не вдалося завантажити зображення, надішли його ще раз.', allowedMentions: { parse: [], repliedUser: true } });
           return true;
         }
         const discordTools = buildDiscordTools(message);
-        const answer = await askJarvis(ollama, config, { question, images, history, now: new Date() }, discordTools);
+        const answer = await askJarvis(ollama, config, { question, images, history: fullHistory, now: new Date() }, discordTools);
         const note = answer.imagesDropped ? '\n\n_(Зображення не враховано: основна модель зараз недоступна.)_' : '';
-        const parts = splitForDiscord(`${answer.text}${note}`);
-        const files = discordTools.pendingGifs
-          .splice(0, MAX_GIF_ATTACHMENTS)
-          .map((gif) => ({ attachment: gif.data, name: gif.filename }));
+        const files = discordTools.pendingMedia
+          .splice(0, MAX_MEDIA_ATTACHMENTS)
+          .map((media) => ({ attachment: media.data, name: media.filename }));
+        const honest = discordTools.mediaAttempts > 0 && files.length === 0
+          ? '\n\n_(Прикріпити медіа не вийшло — спробуй уточнити запит.)_'
+          : '';
+        const parts = splitForDiscord(`${answer.text}${note}${honest}`);
         const first = await message.reply({
           content: parts[0] ?? '…',
           ...(files.length > 0 ? { files } : {}),
           allowedMentions: { parse: [], repliedUser: true },
         });
         rememberAnswer(first.id);
+        void maybeUpgradeDigest().catch(() => undefined);
         for (const part of parts.slice(1)) {
           const sent = await message.channel.send({ content: part, allowedMentions: { parse: [] } });
           rememberAnswer(sent.id);
         }
-        memory.remember(message.author.id, [
+        const speaker = message.member?.displayName ?? message.author.username;
+        memory.remember(speaker, [
           { role: 'user', content: question.trim() || '[зображення]' },
           { role: 'assistant', content: answer.text },
         ]);
-        console.info(`Jarvis answered: model=${answer.model} fallback=${answer.usedFallback} tools=${answer.toolCalls} images=${images.length} gifs=${files.length} tokens=${answer.promptTokens}/${answer.outputTokens} ms=${Date.now() - started}`);
+        console.info(`Jarvis answered: model=${answer.model} fallback=${answer.usedFallback} tools=${answer.toolCalls} images=${images.length} media=${files.length} tokens=${answer.promptTokens}/${answer.outputTokens} ms=${Date.now() - started}`);
       } catch (error) {
         const status = error instanceof OllamaError ? String(error.status ?? 'network') : 'internal';
         console.error(`Jarvis failed: status=${status} ms=${Date.now() - started}`);

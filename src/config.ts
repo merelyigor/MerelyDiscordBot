@@ -12,10 +12,17 @@ export interface JarvisConfig {
   maxConcurrent: number;
   channelIds: string[];
   memoryMessages: number;
+  /** Shared history window in tokens. */
+  memoryMaxTokens: number;
+  /** Same window in chars, derived as tokens x CHARS_PER_TOKEN. */
+  memoryMaxChars: number;
   memoryTtlMs: number;
   musicChannelId: string;
   /** Optional Giphy API key (`GIPHY_API_KEY`); without it gif sending falls back to links. */
   giphyApiKey?: string | undefined;
+  /** Optional Google image search key + engine (`GOOGLE_API_KEY`, `GOOGLE_CSE_ID`); without them photos fall back to Wikipedia. */
+  googleApiKey?: string | undefined;
+  googleCseId?: string | undefined;
 }
 
 export interface BotConfig {
@@ -30,6 +37,8 @@ export interface BotConfig {
   dailyQuoteHour: number;
   jarvis?: JarvisConfig;
 }
+
+const CHARS_PER_TOKEN = 3;
 
 function required(env: NodeJS.ProcessEnv, name: string): string {
   const value = env[name]?.trim();
@@ -72,14 +81,18 @@ export function loadJarvisConfig(env: NodeJS.ProcessEnv = process.env): JarvisCo
     webSearch: (env.JARVIS_WEB_SEARCH?.trim().toLowerCase() || 'true') === 'true',
     timeoutMs: intFromEnv(env, 'JARVIS_TIMEOUT_SECONDS', 90) * 1000,
     maxToolRounds: intFromEnv(env, 'JARVIS_MAX_TOOL_ROUNDS', 4),
-    userCooldownMs: intFromEnv(env, 'JARVIS_USER_COOLDOWN_SECONDS', 15) * 1000,
-    userDailyLimit: intFromEnv(env, 'JARVIS_USER_DAILY_LIMIT', 40),
-    maxConcurrent: Math.max(1, intFromEnv(env, 'JARVIS_MAX_CONCURRENT', 2)),
+    userCooldownMs: intFromEnv(env, 'JARVIS_USER_COOLDOWN_SECONDS', 5) * 1000,
+    userDailyLimit: intFromEnv(env, 'JARVIS_USER_DAILY_LIMIT', 0),
+    maxConcurrent: Math.max(1, intFromEnv(env, 'JARVIS_MAX_CONCURRENT', 3)),
     channelIds: (env.JARVIS_CHANNEL_IDS ?? '').split(',').map((id) => id.trim()).filter(Boolean),
-    memoryMessages: Math.min(50, intFromEnv(env, 'JARVIS_MEMORY_MESSAGES', 20)),
+    memoryMessages: Math.min(2000, intFromEnv(env, 'JARVIS_MEMORY_MESSAGES', 1000)),
+    memoryMaxTokens: Math.max(10000, intFromEnv(env, 'JARVIS_MEMORY_MAX_TOKENS', 110000)),
+    memoryMaxChars: Math.max(10000, intFromEnv(env, 'JARVIS_MEMORY_MAX_TOKENS', 110000)) * CHARS_PER_TOKEN,
     memoryTtlMs: Math.max(1, intFromEnv(env, 'JARVIS_MEMORY_TTL_HOURS', 72)) * 3_600_000,
     musicChannelId: env.MUSIC_CHANNEL_ID?.trim() || '697224336460873761',
     giphyApiKey: env.GIPHY_API_KEY?.trim() || undefined,
+    googleApiKey: env.GOOGLE_API_KEY?.trim() || undefined,
+    googleCseId: env.GOOGLE_CSE_ID?.trim() || undefined,
   };
 }
 
