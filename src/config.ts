@@ -1,3 +1,18 @@
+export interface JarvisConfig {
+  /** Ollama Cloud keys in priority order: `OLLAMA_API_KEY` first, then `_2.._5`. Empty values are ignored. */
+  apiKeys: string[];
+  baseUrl: string;
+  model: string;
+  fallbackModel: string;
+  webSearch: boolean;
+  timeoutMs: number;
+  maxToolRounds: number;
+  userCooldownMs: number;
+  userDailyLimit: number;
+  maxConcurrent: number;
+  channelIds: string[];
+}
+
 export interface BotConfig {
   discordToken: string;
   discordClientId: string;
@@ -8,6 +23,7 @@ export interface BotConfig {
   healthFile: string;
   dailyQuoteChannelId?: string;
   dailyQuoteHour: number;
+  jarvis?: JarvisConfig;
 }
 
 function required(env: NodeJS.ProcessEnv, name: string): string {
@@ -16,9 +32,45 @@ function required(env: NodeJS.ProcessEnv, name: string): string {
   return value;
 }
 
+function intFromEnv(env: NodeJS.ProcessEnv, name: string, fallback: number): number {
+  const raw = env[name]?.trim();
+  if (!raw) return fallback;
+  const value = Number.parseInt(raw, 10);
+  if (!Number.isInteger(value) || value < 0 || String(value) !== raw) {
+    throw new Error(`${name} must be a non-negative integer`);
+  }
+  return value;
+}
+
+/** Jarvis is off unless JARVIS_ENABLED=true; an empty OLLAMA_API_KEY disables it with a warning instead of failing the bot. */
+export function loadJarvisConfig(env: NodeJS.ProcessEnv = process.env): JarvisConfig | undefined {
+  if (env.JARVIS_ENABLED?.trim().toLowerCase() !== 'true') return undefined;
+  const apiKeys = [env.OLLAMA_API_KEY, env.OLLAMA_API_KEY_2, env.OLLAMA_API_KEY_3, env.OLLAMA_API_KEY_4, env.OLLAMA_API_KEY_5]
+    .map((key) => key?.trim())
+    .filter((key): key is string => Boolean(key));
+  if (apiKeys.length === 0) {
+    console.warn('Jarvis disabled: OLLAMA_API_KEY is empty');
+    return undefined;
+  }
+  return {
+    apiKeys,
+    baseUrl: env.OLLAMA_BASE_URL?.trim() || 'https://ollama.com',
+    model: env.JARVIS_MODEL?.trim() || 'gemma4:31b',
+    fallbackModel: env.JARVIS_FALLBACK_MODEL?.trim() || 'gpt-oss:120b',
+    webSearch: (env.JARVIS_WEB_SEARCH?.trim().toLowerCase() || 'true') === 'true',
+    timeoutMs: intFromEnv(env, 'JARVIS_TIMEOUT_SECONDS', 90) * 1000,
+    maxToolRounds: intFromEnv(env, 'JARVIS_MAX_TOOL_ROUNDS', 4),
+    userCooldownMs: intFromEnv(env, 'JARVIS_USER_COOLDOWN_SECONDS', 15) * 1000,
+    userDailyLimit: intFromEnv(env, 'JARVIS_USER_DAILY_LIMIT', 40),
+    maxConcurrent: Math.max(1, intFromEnv(env, 'JARVIS_MAX_CONCURRENT', 2)),
+    channelIds: (env.JARVIS_CHANNEL_IDS ?? '').split(',').map((id) => id.trim()).filter(Boolean),
+  };
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): BotConfig {
   const discordGuildId = env.DISCORD_GUILD_ID?.trim() || undefined;
   const dailyQuoteChannelId = env.DAILY_QUOTE_CHANNEL_ID?.trim() || undefined;
+  const jarvis = loadJarvisConfig(env);
   return {
     discordToken: required(env, 'DISCORD_TOKEN'),
     discordClientId: required(env, 'DISCORD_CLIENT_ID'),
@@ -35,5 +87,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): BotConfig {
     healthFile: env.BOT_HEALTH_FILE || '/tmp/merely-discord-bot-health',
     ...(dailyQuoteChannelId ? { dailyQuoteChannelId } : {}),
     dailyQuoteHour: Number.parseInt(env.DAILY_QUOTE_HOUR || '9', 10),
+    ...(jarvis ? { jarvis } : {}),
   };
 }

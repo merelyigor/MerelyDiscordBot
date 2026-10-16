@@ -13,43 +13,43 @@ Plan: [plan.md](plan.md).
 
 #### Step 1.1 — Start the plan on a clean tree
 
-- **Status:** pending
+- **Status:** done
 - **Depends on:** none
 - **Files:** `plans/P01-discord-jarvis-ai/plan.md` and `plans/README.md` of the bot repo (status change)
 - **Why:** a plan starts only on a clean git tree, so its changes never mix with unfinished work.
 
 **Do:** (before editing `tasks.md`: any edit of it makes the tree dirty)
-- [ ] Precondition: the owner approved the plan, the `approved` status of `plan.md` is committed with `plans/README.md` (from the bot repo: `git log -1 --format=%s -- plans/P01-discord-jarvis-ai/plan.md` shows that commit), and the owner told to start the execution. Not so → stop and ask the owner.
-- [ ] Run `git status --short` in `/Users/igor/GitHub/merely-server-infra` and in `/Users/igor/GitHub/merely-server-infra/www/MerelyDiscordBot/public`. Any line → stop: tell the owner the listed paths and that the plan cannot start until they are committed or finished; change nothing.
-- [ ] Run `git rev-parse --short HEAD` in both directories (base commits; the review phase diffs against them).
-- [ ] From the bot repo root run `python3 /Users/igor/GitHub/merely-harness/plugins/merely/skills/dev-standard/scripts/plan.py status --root . P01 in-progress`.
-- [ ] Commit `plans/P01-discord-jarvis-ai/plan.md` with `plans/README.md` in the bot repo (format: instruction 11 of `plan.md`, one sentence `План P01 переведено в роботу.`).
-- [ ] Only now set this step `in-progress` and write both base commits in `Notes` as `infra=<hash> bot=<hash>`.
+- [x] Precondition: the owner approved the plan, the `approved` status of `plan.md` is committed with `plans/README.md` (from the bot repo: `git log -1 --format=%s -- plans/P01-discord-jarvis-ai/plan.md` shows that commit), and the owner told to start the execution. Not so → stop and ask the owner.
+- [x] Run `git status --short` in `/Users/igor/GitHub/merely-server-infra` and in `/Users/igor/GitHub/merely-server-infra/www/MerelyDiscordBot/public`. Any line → stop: tell the owner the listed paths and that the plan cannot start until they are committed or finished; change nothing.
+- [x] Run `git rev-parse --short HEAD` in both directories (base commits; the review phase diffs against them).
+- [x] From the bot repo root run `python3 /Users/igor/GitHub/merely-harness/plugins/merely/skills/dev-standard/scripts/plan.py status --root . P01 in-progress`.
+- [x] Commit `plans/P01-discord-jarvis-ai/plan.md` with `plans/README.md` in the bot repo (format: instruction 11 of `plan.md`, one sentence `План P01 переведено в роботу.`).
+- [x] Only now set this step `in-progress` and write both base commits in `Notes` as `infra=<hash> bot=<hash>`.
 
 **Verify:**
-- [ ] From the bot repo: `grep -n '^| Status |' plans/P01-discord-jarvis-ai/plan.md` → `| Status | in-progress |`; `git status --short` lists only `plans/P01-discord-jarvis-ai/tasks.md`; in infra `git status --short` is empty.
+- [x] From the bot repo: `grep -n '^| Status |' plans/P01-discord-jarvis-ai/plan.md` → `| Status | in-progress |`; `git status --short` lists only `plans/P01-discord-jarvis-ai/tasks.md`; in infra `git status --short` is empty.
 
 **Done when:** the plan is `in-progress` on a clean tree and both base commits are in `Notes`.
 
 **If it fails:** `PLAN_START=REFUSED` or a dirty tree — the plan stays `approved`; tell the owner the `DIRTY` paths and stop.
 
 **Notes:**
-- (none yet)
+- 2026-10-16: старт за вказівкою власника «перевір плани, якщо є готові в роботу то бери»; обидва дерева чисті, `PLAN_STATUS=P01 in-progress`, коміт `b2fe558` (`Версія: 1.4.41`). infra=e8aed70 bot=b2fe558.
 
 #### Step 1.2 — Record baseline gate results
 
-- **Status:** pending
+- **Status:** done
 - **Depends on:** Step 1.1
 - **Files:** none (read-only)
 - **Why:** to know which failures, if any, existed before the change.
 
 **Do:**
-- [ ] From the bot repo run `bash scripts/agent-check.sh backend > /tmp/p06-baseline-bot.log 2>&1; echo "rc=$?"`.
-- [ ] From the bot repo run `node --import tsx --test --test-reporter=tap 'tests/**/*.test.ts' 2>&1 | grep -E '^# (tests|pass|fail)'` (quotes keep the glob for Node; the default reporter prints `ℹ pass`, TAP prints `# pass`).
-- [ ] From the infra root run `bash scripts/agent-check.sh project MerelyDiscordBot backend > /tmp/p06-baseline-infra.log 2>&1; echo "rc=$?"`.
+- [x] From the bot repo run `bash scripts/agent-check.sh backend > /tmp/p06-baseline-bot.log 2>&1; echo "rc=$?"`.
+- [x] From the bot repo run `node --import tsx --test --test-reporter=tap 'tests/**/*.test.ts' 2>&1 | grep -E '^# (tests|pass|fail)'` (quotes keep the glob for Node; the default reporter prints `ℹ pass`, TAP prints `# pass`).
+- [x] From the infra root run `bash scripts/agent-check.sh project MerelyDiscordBot backend > /tmp/p06-baseline-infra.log 2>&1; echo "rc=$?"`.
 
 **Verify:**
-- [ ] Record in a note: both `rc=` values and the `# tests`, `# pass`, `# fail` numbers; for a non-zero rc the last 5 lines of the log.
+- [x] Record in a note: both `rc=` values and the `# tests`, `# pass`, `# fail` numbers; for a non-zero rc the last 5 lines of the log.
 
 **Done when:** the baseline is written in `Notes`.
 
@@ -57,7 +57,7 @@ Plan: [plan.md](plan.md).
 the command cannot run at all (missing `node_modules` → run `npm ci` once from the bot repo; missing tool), set `blocked`.
 
 **Notes:**
-- (none yet)
+- 2026-10-16: baseline чистий — bot backend `rc=0`, тести `# tests 31, # pass 31, # fail 0`, infra `project MerelyDiscordBot backend rc=0`. Фазу 1 виконано головною сесією (підготовка й читання-замір, без змін коду).
 
 ---
 
@@ -71,13 +71,13 @@ the command cannot run at all (missing `node_modules` → run `npm ci` once from
 
 #### Step 2.1 — Add the Jarvis configuration to `src/config.ts`
 
-- **Status:** pending
+- **Status:** done
 - **Depends on:** Step 1.2
 - **Files:** `src/config.ts` (modify), `tests/config.test.ts` (modify)
 - **Why:** every Jarvis setting comes only from ENV, and a missing key must disable Jarvis instead of crashing the bot.
 
 **Do:**
-- [ ] In `src/config.ts` insert this block, followed by one empty line, directly above the line `export interface BotConfig {`:
+- [x] In `src/config.ts` insert this block, followed by one empty line, directly above the line `export interface BotConfig {`:
 
 ```ts
 export interface JarvisConfig {
@@ -94,8 +94,8 @@ export interface JarvisConfig {
   channelIds: string[];
 }
 ```
-- [ ] In `interface BotConfig` insert the line `  jarvis?: JarvisConfig;` directly after the line `  dailyQuoteHour: number;`.
-- [ ] Insert this block, followed by one empty line, directly above the line `export function loadConfig(env: NodeJS.ProcessEnv = process.env): BotConfig {`:
+- [x] In `interface BotConfig` insert the line `  jarvis?: JarvisConfig;` directly after the line `  dailyQuoteHour: number;`.
+- [x] Insert this block, followed by one empty line, directly above the line `export function loadConfig(env: NodeJS.ProcessEnv = process.env): BotConfig {`:
 
 ```ts
 function intFromEnv(env: NodeJS.ProcessEnv, name: string, fallback: number): number {
@@ -131,19 +131,19 @@ export function loadJarvisConfig(env: NodeJS.ProcessEnv = process.env): JarvisCo
   };
 }
 ```
-- [ ] In `loadConfig` replace the line `  const dailyQuoteChannelId = env.DAILY_QUOTE_CHANNEL_ID?.trim() || undefined;` with these two lines:
+- [x] In `loadConfig` replace the line `  const dailyQuoteChannelId = env.DAILY_QUOTE_CHANNEL_ID?.trim() || undefined;` with these two lines:
 
 ```ts
   const dailyQuoteChannelId = env.DAILY_QUOTE_CHANNEL_ID?.trim() || undefined;
   const jarvis = loadJarvisConfig(env);
 ```
-- [ ] In `loadConfig` replace the line `    dailyQuoteHour: Number.parseInt(env.DAILY_QUOTE_HOUR || '9', 10),` with these two lines:
+- [x] In `loadConfig` replace the line `    dailyQuoteHour: Number.parseInt(env.DAILY_QUOTE_HOUR || '9', 10),` with these two lines:
 
 ```ts
     dailyQuoteHour: Number.parseInt(env.DAILY_QUOTE_HOUR || '9', 10),
     ...(jarvis ? { jarvis } : {}),
 ```
-- [ ] In `tests/config.test.ts` replace the line `import { loadConfig } from '../src/config.js';` with `import { loadConfig, loadJarvisConfig } from '../src/config.js';` and append at the end of the file:
+- [x] In `tests/config.test.ts` replace the line `import { loadConfig } from '../src/config.js';` with `import { loadConfig, loadJarvisConfig } from '../src/config.js';` and append at the end of the file:
 
 ```ts
 
@@ -187,25 +187,25 @@ test('parses Jarvis overrides and rejects bad numbers', () => {
 ```
 
 **Verify:**
-- [ ] From the bot repo: `node --import tsx --test --test-reporter=tap tests/config.test.ts` → exit code 0, output has `# fail 0`.
-- [ ] `npm run typecheck` → exit code 0.
+- [x] From the bot repo: `node --import tsx --test --test-reporter=tap tests/config.test.ts` → exit code 0, output has `# fail 0`.
+- [x] `npm run typecheck` → exit code 0.
 
 **Done when:** the config tests pass and the type check is clean.
 
 **If it fails:** a type error about `jarvis` being `undefined` means the spread `...(jarvis ? { jarvis } : {})` was written differently; restore it exactly. Otherwise set `blocked`.
 
 **Notes:**
-- (none yet)
+- 2026-10-16: виконано виконавцем `jarvis_p2_config_trigger` (gpt-6-luna), прийнято головною сесією: config 6/6/0, trigger 5/5/0, `lint+typecheck rc=0`, повний `npm test rc=0` (40/40/0). Коміт відкладено до чекпоїнта 4.4 за інструкцією 11.
 
 #### Step 2.2 — Create the trigger-word matcher `src/jarvis-trigger.ts`
 
-- **Status:** pending
+- **Status:** done
 - **Depends on:** Step 2.1
 - **Files:** `src/jarvis-trigger.ts` (create), `tests/jarvis-trigger.test.ts` (create)
 - **Why:** the owner writes «джарвіс», «джарвис», «джервіс», «jarvis» with typos, while words like «дарвін» must not trigger the bot.
 
 **Do:**
-- [ ] Create `src/jarvis-trigger.ts` with exactly:
+- [x] Create `src/jarvis-trigger.ts` with exactly:
 
 ```ts
 const JARVIS_NAMES = ['джарвіс', 'джарвис', 'джервіс', 'джервис', 'jarvis', 'jervis', 'djarvis'] as const;
@@ -252,7 +252,7 @@ export function parseJarvisTrigger(content: string): string | null {
   return rest.replace(/^[\s,.:;!?—–-]+/u, '').trim();
 }
 ```
-- [ ] Create `tests/jarvis-trigger.test.ts` with exactly:
+- [x] Create `tests/jarvis-trigger.test.ts` with exactly:
 
 ```ts
 import assert from 'node:assert/strict';
@@ -294,27 +294,27 @@ test('returns null when the message does not start with the trigger', () => {
 ```
 
 **Verify:**
-- [ ] From the bot repo: `node --import tsx --test --test-reporter=tap tests/jarvis-trigger.test.ts` → exit code 0, output has `# pass 5` and `# fail 0`.
+- [x] From the bot repo: `node --import tsx --test --test-reporter=tap tests/jarvis-trigger.test.ts` → exit code 0, output has `# pass 5` and `# fail 0`.
 
 **Done when:** all five trigger tests pass.
 
 **If it fails:** a failing word in the positive or negative list — print `editDistance(normalizeWord(word), name)` for each name in a one-off `node --import tsx -e` command and record the numbers in `Notes`. Do not change `MAX_DISTANCE` or the word lists without the owner. Set `blocked`.
 
 **Notes:**
-- (none yet)
+- 2026-10-16: виконано виконавцем `jarvis_p2_config_trigger` (gpt-6-luna), прийнято головною сесією: config 6/6/0, trigger 5/5/0, `lint+typecheck rc=0`, повний `npm test rc=0` (40/40/0). Коміт відкладено до чекпоїнта 4.4 за інструкцією 11.
 
 #### Step 2.3 — Checkpoint: phase 2 is green
 
-- **Status:** pending
+- **Status:** done
 - **Depends on:** Step 2.1, Step 2.2
 - **Files:** none (read-only)
 - **Why:** each phase must end in a working state that is safe to stop at.
 
 **Do:**
-- [ ] From the bot repo run `npm run lint && npm run typecheck && npm test; echo "rc=$?"`.
+- [x] From the bot repo run `npm run lint && npm run typecheck && npm test; echo "rc=$?"`.
 
 **Verify:**
-- [ ] `rc=0`; the number of failing tests is not above the baseline of Step 1.2.
+- [x] `rc=0`; the number of failing tests is not above the baseline of Step 1.2.
 
 **Done when:** phase 2 acceptance criteria hold with evidence.
 
@@ -323,7 +323,73 @@ the diff; fix only within that step's scope; if not solvable in one attempt,
 set `blocked` and stop.
 
 **Notes:**
-- (none yet)
+- 2026-10-16: виконано виконавцем `jarvis_p2_config_trigger` (gpt-6-luna), прийнято головною сесією: config 6/6/0, trigger 5/5/0, `lint+typecheck rc=0`, повний `npm test rc=0` (40/40/0). Коміт відкладено до чекпоїнта 4.4 за інструкцією 11.
+
+#### Step 2.4 — Five Ollama keys with rotation in `src/config.ts`
+
+- **Status:** done
+- **Depends on:** Step 2.3
+- **Files:** `src/config.ts` (modify), `tests/config.test.ts` (modify)
+- **Why:** API limits can run out, so the owner keeps up to five keys and the bot tries them in order; empty slots are ignored.
+
+**Do:**
+- [x] In `src/config.ts` replace the line `  apiKey: string;` with:
+
+```ts
+  /** Ollama Cloud keys in priority order: `OLLAMA_API_KEY` first, then `_2.._5`. Empty values are ignored. */
+  apiKeys: string[];
+```
+- [x] In `loadJarvisConfig` replace the block:
+
+```ts
+  const apiKey = env.OLLAMA_API_KEY?.trim();
+  if (!apiKey) {
+    console.warn('Jarvis disabled: OLLAMA_API_KEY is empty');
+    return undefined;
+  }
+```
+
+with:
+
+```ts
+  const apiKeys = [env.OLLAMA_API_KEY, env.OLLAMA_API_KEY_2, env.OLLAMA_API_KEY_3, env.OLLAMA_API_KEY_4, env.OLLAMA_API_KEY_5]
+    .map((key) => key?.trim())
+    .filter((key): key is string => Boolean(key));
+  if (apiKeys.length === 0) {
+    console.warn('Jarvis disabled: OLLAMA_API_KEY is empty');
+    return undefined;
+  }
+```
+- [x] In the returned object of `loadJarvisConfig` replace the line `    apiKey,` with `    apiKeys,`.
+- [x] In `tests/config.test.ts` append at the end of the file:
+
+```ts
+test('collects up to five keys in order and skips empty ones', () => {
+  const jarvis = loadJarvisConfig({
+    JARVIS_ENABLED: 'true', OLLAMA_API_KEY: 'key-1',
+    OLLAMA_API_KEY_2: ' ', OLLAMA_API_KEY_3: ' key-3',
+    OLLAMA_API_KEY_5: 'key-5',
+  });
+  assert.deepEqual(jarvis?.apiKeys, ['key-1', 'key-3', 'key-5']);
+});
+
+test('a single key still works as a list of one', () => {
+  const jarvis = loadJarvisConfig({ JARVIS_ENABLED: 'true', OLLAMA_API_KEY: 'test-key' });
+  assert.deepEqual(jarvis?.apiKeys, ['test-key']);
+});
+```
+
+**Verify:**
+- [x] From the bot repo: `node --import tsx --test --test-reporter=tap tests/config.test.ts` → exit code 0, output has `# fail 0`.
+- [x] `npm run typecheck` → exit code 0.
+- [x] `rg -n "config\.apiKey[^s]|apiKey:" src tests` → empty output (only `apiKeys` remains).
+
+**Done when:** the key list is parsed in order and the type check is clean.
+
+**If it fails:** a reference to the old `apiKey` field outside `src/config.ts` — the client of Step 3.1 is not written yet, so any other hit means a wrong edit; restore it and set `blocked`.
+
+**Notes:**
+- 2026-10-16: виконано виконавцем `jarvis_p24_five_keys` (gpt-6-luna), прийнято головною сесією: config 8/8/0, typecheck 0, старих посилань на `apiKey` немає. Коміт відкладено до чекпоїнта 4.4.
 
 ---
 
@@ -337,13 +403,13 @@ set `blocked` and stop.
 
 #### Step 3.1 — Create the HTTP client `src/ollama.ts`
 
-- **Status:** pending
+- **Status:** done
 - **Depends on:** Step 2.3
 - **Files:** `src/ollama.ts` (create), `tests/ollama.test.ts` (create)
-- **Why:** one small client on the built-in `fetch` covers chat, web search and page fetch without a new dependency, and marks which errors deserve the fallback model.
+- **Why:** one small client on the built-in `fetch` covers chat, web search and page fetch without a new dependency, and marks which errors deserve the fallback model. It rotates up to five API keys before giving up, so an exhausted limit moves to the next key.
 
 **Do:**
-- [ ] Create `src/ollama.ts` with exactly:
+- [x] Create `src/ollama.ts` with exactly:
 
 ```ts
 export interface OllamaToolCall {
@@ -401,7 +467,8 @@ export interface OllamaClient {
 
 export interface OllamaClientOptions {
   baseUrl: string;
-  apiKey: string;
+  /** Keys are tried in order; the first success wins. Empty list → immediate error, no request. */
+  apiKeys: string[];
   timeoutMs: number;
   fetchImpl?: typeof fetch;
 }
@@ -412,12 +479,12 @@ export function createOllamaClient(options: OllamaClientOptions): OllamaClient {
   const fetchImpl = options.fetchImpl ?? fetch;
   const baseUrl = options.baseUrl.replace(/\/+$/u, '');
 
-  async function post(path: string, body: unknown): Promise<unknown> {
+  async function post(path: string, body: unknown, apiKey: string): Promise<unknown> {
     let response: Response;
     try {
       response = await fetchImpl(`${baseUrl}${path}`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${options.apiKey}`, 'Content-Type': 'application/json' },
+        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(options.timeoutMs),
       });
@@ -433,9 +500,26 @@ export function createOllamaClient(options: OllamaClientOptions): OllamaClient {
     return response.json() as Promise<unknown>;
   }
 
+  /** Failover over keys: a retryable error or 401/403 moves to the next key; anything else throws at once. */
+  async function postWithKeys(path: string, body: unknown): Promise<unknown> {
+    let lastError: unknown = null;
+    for (const apiKey of options.apiKeys) {
+      try {
+        return await post(path, body, apiKey);
+      } catch (error) {
+        if (error instanceof OllamaError && (error.retryable || error.status === 401 || error.status === 403)) {
+          lastError = error;
+          continue;
+        }
+        throw error;
+      }
+    }
+    throw lastError ?? new OllamaError(`Ollama ${path}: no API keys configured`, null, false);
+  }
+
   return {
     async chat(model, messages, tools) {
-      const data = await post('/api/chat', {
+      const data = await postWithKeys('/api/chat', {
         model,
         messages,
         stream: false,
@@ -449,17 +533,17 @@ export function createOllamaClient(options: OllamaClientOptions): OllamaClient {
       };
     },
     async webSearch(query, maxResults) {
-      const data = await post('/api/web_search', { query, max_results: maxResults }) as { results?: WebSearchResult[] };
+      const data = await postWithKeys('/api/web_search', { query, max_results: maxResults }) as { results?: WebSearchResult[] };
       return data.results ?? [];
     },
     async webFetch(url) {
-      const data = await post('/api/web_fetch', { url }) as Partial<WebFetchResult>;
+      const data = await postWithKeys('/api/web_fetch', { url }) as Partial<WebFetchResult>;
       return { title: data.title ?? '', content: data.content ?? '', links: data.links ?? [] };
     },
   };
 }
 ```
-- [ ] Create `tests/ollama.test.ts` with exactly:
+- [x] Create `tests/ollama.test.ts` with exactly:
 
 ```ts
 import assert from 'node:assert/strict';
@@ -478,7 +562,7 @@ function fakeFetch(status: number, body: unknown, captured: Captured[]): typeof 
 test('chat posts to /api/chat with the bearer key and without streaming', async () => {
   const captured: Captured[] = [];
   const client = createOllamaClient({
-    baseUrl: 'https://ollama.com/', apiKey: 'test-key', timeoutMs: 1000,
+    baseUrl: 'https://ollama.com/', apiKeys: ['test-key'], timeoutMs: 1000,
     fetchImpl: fakeFetch(200, { message: { role: 'assistant', content: 'ok' }, prompt_eval_count: 3, eval_count: 2 }, captured),
   });
   const result = await client.chat('gemma4:31b', [{ role: 'user', content: 'hi' }]);
@@ -493,7 +577,7 @@ test('chat posts to /api/chat with the bearer key and without streaming', async 
 
 test('marks 404, 408, 429 and 5xx as retryable and 401, 403 as final', async () => {
   for (const [status, retryable] of [[404, true], [408, true], [429, true], [500, true], [503, true], [401, false], [403, false]] as const) {
-    const client = createOllamaClient({ baseUrl: 'https://ollama.com', apiKey: 'test-key', timeoutMs: 1000, fetchImpl: fakeFetch(status, 'error', []) });
+    const client = createOllamaClient({ baseUrl: 'https://ollama.com', apiKeys: ['test-key'], timeoutMs: 1000, fetchImpl: fakeFetch(status, 'error', []) });
     await assert.rejects(client.chat('gemma4:31b', []), (error: unknown) =>
       error instanceof OllamaError && error.status === status && error.retryable === retryable && !error.message.includes('test-key'));
   }
@@ -501,7 +585,7 @@ test('marks 404, 408, 429 and 5xx as retryable and 401, 403 as final', async () 
 
 test('turns a network failure into a retryable error without the key', async () => {
   const failing = (async () => { throw new TypeError('fetch failed'); }) as typeof fetch;
-  const client = createOllamaClient({ baseUrl: 'https://ollama.com', apiKey: 'test-key', timeoutMs: 1000, fetchImpl: failing });
+  const client = createOllamaClient({ baseUrl: 'https://ollama.com', apiKeys: ['test-key'], timeoutMs: 1000, fetchImpl: failing });
   await assert.rejects(client.chat('gemma4:31b', []), (error: unknown) =>
     error instanceof OllamaError && error.status === null && error.retryable && !error.message.includes('test-key'));
 });
@@ -509,7 +593,7 @@ test('turns a network failure into a retryable error without the key', async () 
 test('webSearch sends the query and max_results', async () => {
   const captured: Captured[] = [];
   const client = createOllamaClient({
-    baseUrl: 'https://ollama.com', apiKey: 'test-key', timeoutMs: 1000,
+    baseUrl: 'https://ollama.com', apiKeys: ['test-key'], timeoutMs: 1000,
     fetchImpl: fakeFetch(200, { results: [{ title: 't', url: 'https://example.com', content: 'c' }] }, captured),
   });
   const results = await client.webSearch('новини', 3);
@@ -517,29 +601,67 @@ test('webSearch sends the query and max_results', async () => {
   assert.equal(captured[0]?.url, 'https://ollama.com/api/web_search');
   assert.deepEqual(JSON.parse(String(captured[0]?.init?.body)), { query: 'новини', max_results: 3 });
 });
+
+test('rotates to the next key on 429 and sends it as bearer', async () => {
+  const captured: Captured[] = [];
+  let calls = 0;
+  const seq = (async (input: string | URL | Request, init?: RequestInit) => {
+    calls += 1;
+    captured.push({ url: String(input), init });
+    if (calls === 1) return new Response('limited', { status: 429 });
+    return new Response(JSON.stringify({ message: { role: 'assistant', content: 'ok' } }), { status: 200 });
+  }) as typeof fetch;
+  const client = createOllamaClient({ baseUrl: 'https://ollama.com', apiKeys: ['key-1', 'key-2'], timeoutMs: 1000, fetchImpl: seq });
+  const result = await client.chat('gemma4:31b', [{ role: 'user', content: 'hi' }]);
+  assert.equal(result.message.content, 'ok');
+  assert.equal(captured.length, 2);
+  assert.equal(new Headers(captured[1]?.init?.headers).get('authorization'), 'Bearer key-2');
+});
+
+test('throws the last error when every key is exhausted', async () => {
+  const captured: Captured[] = [];
+  const client = createOllamaClient({
+    baseUrl: 'https://ollama.com', apiKeys: ['key-1', 'key-2', 'key-3'], timeoutMs: 1000,
+    fetchImpl: fakeFetch(429, 'limited', captured),
+  });
+  await assert.rejects(client.chat('gemma4:31b', []), (error: unknown) =>
+    error instanceof OllamaError && error.status === 429 && error.retryable && !error.message.includes('key-'));
+  assert.equal(captured.length, 3);
+});
+
+test('tries the next key on 401 but stays non-retryable at exhaustion', async () => {
+  const captured: Captured[] = [];
+  const client = createOllamaClient({
+    baseUrl: 'https://ollama.com', apiKeys: ['key-1', 'key-2'], timeoutMs: 1000,
+    fetchImpl: fakeFetch(401, 'bad key', captured),
+  });
+  await assert.rejects(client.chat('gemma4:31b', []), (error: unknown) =>
+    error instanceof OllamaError && error.status === 401 && !error.retryable);
+  assert.equal(captured.length, 2);
+});
 ```
 
 **Verify:**
-- [ ] From the bot repo: `node --import tsx --test --test-reporter=tap tests/ollama.test.ts` → exit code 0, `# pass 4`, `# fail 0`.
-- [ ] `git diff --stat package.json package-lock.json` → empty output.
+- [x] From the bot repo: `node --import tsx --test --test-reporter=tap tests/ollama.test.ts` → exit code 0, `# pass 7`, `# fail 0`.
+- [x] `git diff --stat package.json package-lock.json` → empty output.
 
 **Done when:** the client tests pass with no network and no new dependency.
 
 **If it fails:** a type error on `Response`, `Headers` or `RequestInit` — check that `@types/node` is in `devDependencies` (`grep -n '@types/node' package.json`); if it is missing, set `blocked` (adding a dependency needs the owner).
 
 **Notes:**
-- (none yet)
+- 2026-10-16: виконано виконавцем `jarvis_p3_client_agent` (gpt-6-luna), прийнято головною сесією: ollama 7/7/0, agent 8/8/0, `lint+typecheck+npm test rc=0` (57/57/0, не гірше baseline); тон — рекомендований, без змін. Виконавець застейджив файли тригера всупереч пакету — знято зі стейджа, дерево недоторкане. Коміт відкладено до чекпоїнта 4.4.
 
 #### Step 3.2 — Create the agent loop `src/jarvis-agent.ts`
 
-- **Status:** pending
+- **Status:** done
 - **Depends on:** Step 3.1
 - **Files:** `src/jarvis-agent.ts` (create), `tests/jarvis-agent.test.ts` (create)
 - **Why:** the agent decides itself when to search the web, stops after a fixed number of tool rounds and switches to `gpt-oss:120b` when `gemma4:31b` fails.
 
 **Do:**
-- [ ] Read the answer to the Question «тон Джарвіса» in `plan.md` (`Assumptions and open questions`). Recommended answer accepted or no answer recorded as an owner decision → use the prompt text below unchanged. Another answer from the owner → change only the first line of `buildSystemPrompt` and write the decision in `Notes`.
-- [ ] Create `src/jarvis-agent.ts` with exactly:
+- [x] Read the answer to the Question «тон Джарвіса» in `plan.md` (`Assumptions and open questions`). Recommended answer accepted or no answer recorded as an owner decision → use the prompt text below unchanged. Another answer from the owner → change only the first line of `buildSystemPrompt` and write the decision in `Notes`.
+- [x] Create `src/jarvis-agent.ts` with exactly:
 
 ```ts
 import { OllamaError, type OllamaClient, type OllamaMessage, type OllamaTool } from './ollama.js';
@@ -684,7 +806,7 @@ export async function askJarvis(client: OllamaClient, settings: JarvisAgentSetti
   }
 }
 ```
-- [ ] Create `tests/jarvis-agent.test.ts` with exactly:
+- [x] Create `tests/jarvis-agent.test.ts` with exactly:
 
 ```ts
 import assert from 'node:assert/strict';
@@ -797,29 +919,29 @@ test('system prompt carries the date and the search rule', () => {
 ```
 
 **Verify:**
-- [ ] From the bot repo: `node --import tsx --test --test-reporter=tap tests/jarvis-agent.test.ts` → exit code 0, `# pass 8`, `# fail 0`.
-- [ ] `grep -n "'gpt-oss:120b'" src/jarvis-agent.ts` → no output and exit code 1 (expected for grep without matches; model names live only in `src/config.ts` defaults and ENV).
+- [x] From the bot repo: `node --import tsx --test --test-reporter=tap tests/jarvis-agent.test.ts` → exit code 0, `# pass 8`, `# fail 0`.
+- [x] `grep -n "'gpt-oss:120b'" src/jarvis-agent.ts` → no output and exit code 1 (expected for grep without matches; model names live only in `src/config.ts` defaults and ENV).
 
 **Done when:** the eight agent tests pass and the agent has no hard-coded model names.
 
 **If it fails:** a lint error `no-unused-vars` on a test helper — rename the parameter with a leading `_` only. Any other failure — record the failing test name and message in `Notes` and set `blocked`.
 
 **Notes:**
-- (none yet)
+- 2026-10-16: виконано виконавцем `jarvis_p3_client_agent` (gpt-6-luna), прийнято головною сесією: ollama 7/7/0, agent 8/8/0, `lint+typecheck+npm test rc=0` (57/57/0, не гірше baseline); тон — рекомендований, без змін. Виконавець застейджив файли тригера всупереч пакету — знято зі стейджа, дерево недоторкане. Коміт відкладено до чекпоїнта 4.4.
 
 #### Step 3.3 — Checkpoint: phase 3 is green
 
-- **Status:** pending
+- **Status:** done
 - **Depends on:** Step 3.1, Step 3.2
 - **Files:** none (read-only)
 - **Why:** each phase must end in a working state that is safe to stop at.
 
 **Do:**
-- [ ] From the bot repo run `npm run lint && npm run typecheck && npm test; echo "rc=$?"`.
-- [ ] Run `git diff --stat package.json package-lock.json`.
+- [x] From the bot repo run `npm run lint && npm run typecheck && npm test; echo "rc=$?"`.
+- [x] Run `git diff --stat package.json package-lock.json`.
 
 **Verify:**
-- [ ] `rc=0`; the diff of `package.json` and `package-lock.json` is empty.
+- [x] `rc=0`; the diff of `package.json` and `package-lock.json` is empty.
 
 **Done when:** phase 3 acceptance criteria hold with evidence.
 
@@ -828,7 +950,7 @@ the diff; fix only within that step's scope; if not solvable in one attempt,
 set `blocked` and stop.
 
 **Notes:**
-- (none yet)
+- 2026-10-16: виконано виконавцем `jarvis_p3_client_agent` (gpt-6-luna), прийнято головною сесією: ollama 7/7/0, agent 8/8/0, `lint+typecheck+npm test rc=0` (57/57/0, не гірше baseline); тон — рекомендований, без змін. Виконавець застейджив файли тригера всупереч пакету — знято зі стейджа, дерево недоторкане. Коміт відкладено до чекпоїнта 4.4.
 
 ---
 
@@ -842,13 +964,13 @@ set `blocked` and stop.
 
 #### Step 4.1 — Create the limiter `src/jarvis-limits.ts`
 
-- **Status:** pending
+- **Status:** done
 - **Depends on:** Step 3.3
 - **Files:** `src/jarvis-limits.ts` (create), `tests/jarvis-limits.test.ts` (create)
 - **Why:** Ollama Cloud usage is limited by the tariff, so each user gets a pause between requests and a daily cap, and the whole bot handles at most `JARVIS_MAX_CONCURRENT` requests at once.
 
 **Do:**
-- [ ] Create `src/jarvis-limits.ts` with exactly:
+- [x] Create `src/jarvis-limits.ts` with exactly:
 
 ```ts
 export type LimitResult =
@@ -897,7 +1019,7 @@ export class JarvisLimiter {
   }
 }
 ```
-- [ ] Create `tests/jarvis-limits.test.ts` with exactly:
+- [x] Create `tests/jarvis-limits.test.ts` with exactly:
 
 ```ts
 import assert from 'node:assert/strict';
@@ -939,25 +1061,25 @@ test('limits concurrent requests until release', () => {
 ```
 
 **Verify:**
-- [ ] From the bot repo: `node --import tsx --test --test-reporter=tap tests/jarvis-limits.test.ts` → exit code 0, `# pass 3`, `# fail 0`.
+- [x] From the bot repo: `node --import tsx --test --test-reporter=tap tests/jarvis-limits.test.ts` → exit code 0, `# pass 3`, `# fail 0`.
 
 **Done when:** the three limiter tests pass.
 
 **If it fails:** compare the failing `deepEqual` with the code above character by character; one correction allowed, then `blocked`.
 
 **Notes:**
-- (none yet)
+- 2026-10-16: 4.1–4.3 виконано виконавцем `jarvis_p4_discord` (gpt-6-luna), прийнято головною сесією: limits 3/3/0, discord 4/4/0, проводка до `matchRules`, `allowedMentions` ×5.
 
 #### Step 4.2 — Create the Discord handler `src/jarvis-discord.ts`
 
-- **Status:** pending
+- **Status:** done
 - **Depends on:** Step 4.1
 - **Files:** `src/jarvis-discord.ts` (create), `tests/jarvis-discord.test.ts` (create)
 - **Why:** one module turns a Discord message into a Jarvis request and the answer back into safe Discord messages.
 
 **Do:**
-- [ ] Read the answer to the Question «продовження розмови» in `plan.md`. Recommended answer accepted or no answer recorded as an owner decision → use the code below unchanged. The owner answered «ні» → in `handle` replace the line `const isFollowUp = replyTo !== undefined && answerIds.includes(replyTo);` with `const isFollowUp = false;` and write the decision in `Notes`.
-- [ ] Create `src/jarvis-discord.ts` with exactly:
+- [x] Read the answer to the Question «продовження розмови» in `plan.md`. Recommended answer accepted or no answer recorded as an owner decision → use the code below unchanged. The owner answered «ні» → in `handle` replace the line `const isFollowUp = replyTo !== undefined && answerIds.includes(replyTo);` with `const isFollowUp = false;` and write the decision in `Notes`.
+- [x] Create `src/jarvis-discord.ts` with exactly:
 
 ```ts
 import type { Client, Message } from 'discord.js';
@@ -1038,7 +1160,7 @@ export function limitText(result: Exclude<LimitResult, { kind: 'ok' }>): string 
 }
 
 export function createJarvis(config: JarvisConfig, client: Client, fetchImpl: typeof fetch = fetch): Jarvis {
-  const ollama = createOllamaClient({ baseUrl: config.baseUrl, apiKey: config.apiKey, timeoutMs: config.timeoutMs, fetchImpl });
+  const ollama = createOllamaClient({ baseUrl: config.baseUrl, apiKeys: config.apiKeys, timeoutMs: config.timeoutMs, fetchImpl });
   const limiter = new JarvisLimiter(config.userCooldownMs, config.userDailyLimit, config.maxConcurrent);
   const answerIds: string[] = [];
 
@@ -1124,7 +1246,7 @@ export function createJarvis(config: JarvisConfig, client: Client, fetchImpl: ty
   };
 }
 ```
-- [ ] Create `tests/jarvis-discord.test.ts` with exactly:
+- [x] Create `tests/jarvis-discord.test.ts` with exactly:
 
 ```ts
 import assert from 'node:assert/strict';
@@ -1172,42 +1294,42 @@ test('limit messages tell the user what to do', () => {
 ```
 
 **Verify:**
-- [ ] From the bot repo: `node --import tsx --test --test-reporter=tap tests/jarvis-discord.test.ts` → exit code 0, `# pass 4`, `# fail 0`.
-- [ ] `npm run typecheck` → exit code 0.
-- [ ] `grep -c 'allowedMentions: { parse: \[\]' src/jarvis-discord.ts` → `5`, and `grep -c '\.reply(\|\.send(' src/jarvis-discord.ts` → `5` (every reply and send has no mentions).
+- [x] From the bot repo: `node --import tsx --test --test-reporter=tap tests/jarvis-discord.test.ts` → exit code 0, `# pass 4`, `# fail 0`.
+- [x] `npm run typecheck` → exit code 0.
+- [x] `grep -c 'allowedMentions: { parse: \[\]' src/jarvis-discord.ts` → `5`, and `grep -c '\.reply(\|\.send(' src/jarvis-discord.ts` → `5` (every reply and send has no mentions).
 
 **Done when:** the helper tests pass, the type check is clean and every message call carries `allowedMentions: { parse: [] ... }`.
 
 **If it fails:** a discord.js type error on `message.channel.send`, `sendTyping` or `isThread` — check the installed type with `grep -n "sendTyping\|isThread" node_modules/discord.js/typings/index.d.ts | head` and record it in `Notes`; one fix allowed: cast only the channel as `(message.channel as import('discord.js').GuildTextBasedChannel)`; otherwise `blocked`.
 
 **Notes:**
-- (none yet)
+- 2026-10-16: 4.1–4.3 виконано виконавцем `jarvis_p4_discord` (gpt-6-luna), прийнято головною сесією: limits 3/3/0, discord 4/4/0, проводка до `matchRules`, `allowedMentions` ×5.
 
 #### Step 4.3 — Wire Jarvis into `src/index.ts` and `/help`
 
-- **Status:** pending
+- **Status:** done
 - **Depends on:** Step 4.2
 - **Files:** `src/index.ts` (modify), `src/help.ts` (modify)
 - **Why:** the handler must run before the `rules.json` auto-replies, and `/help` must describe the new behaviour (`AGENTS.md:22` of the bot). `src/commands.ts` stays unchanged: Jarvis adds no slash command.
 
 **Do:**
-- [ ] In `src/index.ts` insert the line `import { createJarvis } from './jarvis-discord.js';` directly after the line `import { buildHelpEmbed } from './help.js';`.
-- [ ] Insert the line `const jarvis = config.jarvis ? createJarvis(config.jarvis, client) : undefined;` directly after the line that starts with `const client = new Client({ intents:`.
-- [ ] Replace the line ``  console.info(`Discord bot ready as ${readyClient.user.tag}`);`` with these two lines:
+- [x] In `src/index.ts` insert the line `import { createJarvis } from './jarvis-discord.js';` directly after the line `import { buildHelpEmbed } from './help.js';`.
+- [x] Insert the line `const jarvis = config.jarvis ? createJarvis(config.jarvis, client) : undefined;` directly after the line that starts with `const client = new Client({ intents:`.
+- [x] Replace the line ``  console.info(`Discord bot ready as ${readyClient.user.tag}`);`` with these two lines:
 
 ```ts
   console.info(`Discord bot ready as ${readyClient.user.tag}`);
   console.info(`Jarvis ${jarvis ? 'enabled' : 'disabled'}`);
 ```
-- [ ] Replace the line `  const matched = matchRules(message.content);` with these two lines:
+- [x] Replace the line `  const matched = matchRules(message.content);` with these two lines:
 
 ```ts
   if (jarvis && await jarvis.handle(message)) return;
   const matched = matchRules(message.content);
 ```
-- [ ] Replace `buildHelpEmbed()` in the line `    await interaction.reply({ embeds: [buildHelpEmbed()] });` with `buildHelpEmbed(Boolean(jarvis))`.
-- [ ] In `src/help.ts` replace the line `export function buildHelpEmbed(): EmbedBuilder {` with `export function buildHelpEmbed(jarvisEnabled = false): EmbedBuilder {`.
-- [ ] In `src/help.ts` insert this block, followed by one empty line, directly above the line `  const triggers = rules.map((r, i) => {`:
+- [x] Replace `buildHelpEmbed()` in the line `    await interaction.reply({ embeds: [buildHelpEmbed()] });` with `buildHelpEmbed(Boolean(jarvis))`.
+- [x] In `src/help.ts` replace the line `export function buildHelpEmbed(): EmbedBuilder {` with `export function buildHelpEmbed(jarvisEnabled = false): EmbedBuilder {`.
+- [x] In `src/help.ts` insert this block, followed by one empty line, directly above the line `  const triggers = rules.map((r, i) => {`:
 
 ```ts
   if (jarvisEnabled) {
@@ -1222,20 +1344,20 @@ test('limit messages tell the user what to do', () => {
 ```
 
 **Verify:**
-- [ ] `grep -n "jarvis.handle(message)" src/index.ts` → exactly one line, and the next line is `  const matched = matchRules(message.content);`.
-- [ ] `grep -n "buildHelpEmbed(Boolean(jarvis))" src/index.ts` → one line.
-- [ ] `npm run typecheck` → exit code 0.
+- [x] `grep -n "jarvis.handle(message)" src/index.ts` → exactly one line, and the next line is `  const matched = matchRules(message.content);`.
+- [x] `grep -n "buildHelpEmbed(Boolean(jarvis))" src/index.ts` → one line.
+- [x] `npm run typecheck` → exit code 0.
 
 **Done when:** the handler is called once, before `matchRules`, and the type check is clean.
 
 **If it fails:** `jarvis` used before definition — the `const jarvis = …` line must be after `const client = …` and before `client.once(Events.ClientReady`; fix the position once, otherwise `blocked`.
 
 **Notes:**
-- (none yet)
+- 2026-10-16: 4.1–4.3 виконано виконавцем `jarvis_p4_discord` (gpt-6-luna), прийнято головною сесією: limits 3/3/0, discord 4/4/0, проводка до `matchRules`, `allowedMentions` ×5.
 
 #### Step 4.4 — Checkpoint: phase 4 is green, commit the code
 
-- **Status:** pending
+- **Status:** in-progress
 - **Depends on:** Step 4.3
 - **Files:** bot repo commit of `src/config.ts`, `src/index.ts`, `src/help.ts`, `src/jarvis-trigger.ts`, `src/jarvis-limits.ts`, `src/ollama.ts`, `src/jarvis-agent.ts`, `src/jarvis-discord.ts`, `tests/config.test.ts`, `tests/jarvis-trigger.test.ts`, `tests/jarvis-limits.test.ts`, `tests/ollama.test.ts`, `tests/jarvis-agent.test.ts`, `tests/jarvis-discord.test.ts`, and this plan's `plans/P01-discord-jarvis-ai/tasks.md` and `plans/P01-discord-jarvis-ai/plan.md`
 - **Why:** each phase must end in a working state that is safe to stop at.
@@ -1475,7 +1597,7 @@ set `blocked` and stop.
 
 - **Objective:** the bot container receives every Jarvis variable; Jarvis stays disabled until the owner adds the key.
 - **Scope:** `www/MerelyDiscordBot/docker/docker-compose.yml`, `www/MerelyDiscordBot/docker/.env.local`, `www/MerelyDiscordBot/docker/.env.prod` (infra repo).
-- **Acceptance criteria:** infra gates `compose` and `project MerelyDiscordBot backend` exit 0; no value of `OLLAMA_API_KEY` was written by the agent.
+- **Acceptance criteria:** infra gates `compose` and `project MerelyDiscordBot backend` exit 0; no value of `OLLAMA_API_KEY` … `OLLAMA_API_KEY_5` was written by the agent.
 - **Verification:** commands of Step 6.3.
 - **Parallel group:** none
 
@@ -1492,6 +1614,10 @@ set `blocked` and stop.
 ```yaml
       JARVIS_ENABLED: ${JARVIS_ENABLED:-false}
       OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
+      OLLAMA_API_KEY_2: ${OLLAMA_API_KEY_2:-}
+      OLLAMA_API_KEY_3: ${OLLAMA_API_KEY_3:-}
+      OLLAMA_API_KEY_4: ${OLLAMA_API_KEY_4:-}
+      OLLAMA_API_KEY_5: ${OLLAMA_API_KEY_5:-}
       OLLAMA_BASE_URL: "${OLLAMA_BASE_URL:-https://ollama.com}"
       JARVIS_MODEL: "${JARVIS_MODEL:-gemma4:31b}"
       JARVIS_FALLBACK_MODEL: "${JARVIS_FALLBACK_MODEL:-gpt-oss:120b}"
@@ -1505,9 +1631,9 @@ set `blocked` and stop.
 ```
 
 **Verify:**
-- [ ] `grep -c '^      JARVIS_\|^      OLLAMA_' www/MerelyDiscordBot/docker/docker-compose.yml` → `12`.
+- [ ] `grep -c '^      JARVIS_\|^      OLLAMA_' www/MerelyDiscordBot/docker/docker-compose.yml` → `16`.
 
-**Done when:** all twelve variables are in the `environment:` list.
+**Done when:** all sixteen variables are in the `environment:` list.
 
 **If it fails:** wrong indentation — every inserted line starts with exactly 6 spaces; fix once, otherwise `blocked`.
 
@@ -1533,6 +1659,10 @@ for f in www/MerelyDiscordBot/docker/.env.local www/MerelyDiscordBot/docker/.env
 # Джарвіс (план P01 MerelyDiscordBot): ШІ-агент бота. OLLAMA_API_KEY вписує лише власник.
 JARVIS_ENABLED=false
 OLLAMA_API_KEY=
+OLLAMA_API_KEY_2=
+OLLAMA_API_KEY_3=
+OLLAMA_API_KEY_4=
+OLLAMA_API_KEY_5=
 OLLAMA_BASE_URL=https://ollama.com
 JARVIS_MODEL=gemma4:31b
 JARVIS_FALLBACK_MODEL=gpt-oss:120b
@@ -1548,7 +1678,7 @@ done
 ```
 
 **Verify:**
-- [ ] `grep -c '^JARVIS_\|^OLLAMA_' www/MerelyDiscordBot/docker/.env.local www/MerelyDiscordBot/docker/.env.prod` → `12` for each file.
+- [ ] `grep -c '^JARVIS_\|^OLLAMA_' www/MerelyDiscordBot/docker/.env.local www/MerelyDiscordBot/docker/.env.prod` → `16` for each file.
 - [ ] `git diff --stat -- www/MerelyDiscordBot/docker/.env.local www/MerelyDiscordBot/docker/.env.prod` → only insertions (`+`), no deletions.
 
 **Done when:** both files have the block with an empty key and `JARVIS_ENABLED=false`.
@@ -1785,4 +1915,19 @@ bash -c 'source scripts/utils.sh >/dev/null 2>&1; ssh_with_password_fallback "do
 | --- | --- | --- | --- |
 | 2026-10-16 | — | plan created | merelyigor; перенесено з `merely-server-infra` P06 |
 | 2026-10-16 | — | plan updated | примітка про виконання в Codex; перед пушем бота показати власнику всі коміти, що підуть |
+| 2026-10-16 | 1.1 | done | план переведено в `in-progress`, коміт `b2fe558`, база infra=e8aed70 bot=b2fe558 |
+| 2026-10-16 | — | позапланово: Jarvis ENV | за прямою вказівкою власника додано 12 констант у `docker/.env.local`, `docker/.env.prod` (ключ порожній) і мапінг у `docker-compose.yml`; без коміту, до кроку 8; project-gate backend rc=0 |
+| 2026-10-16 | — | env-коментарі | за вказівкою власника обидва env-файли згруповано й підписано українськими коментарями (110 рядків додано, значень не чіпано); gate rc=0 |
+| 2026-10-16 | 3.1 | done | клієнт з ротацією 5 ключів, тести 7/7/0 |
+| 2026-10-16 | 3.2 | done | цикл агента, тести 8/8/0 |
+| 2026-10-16 | — | правило local-запуску | за вказівкою власника в `AGENTS.md` додано пункт про локальний docker-запуск і обовʼязкову зупинку (дублювання з продом); без коміту, до чекпоїнта 5.5 |
+| 2026-10-16 | 4.1 | done | лімітер, тести 3/3/0 |
+| 2026-10-16 | 4.2 | done | Discord-обробник, тести 4/4/0 |
+| 2026-10-16 | 4.3 | done | проводка до matchRules, /help |
+| 2026-10-16 | 3.3 | done | lint+typecheck+test rc=0, 57/57/0 |
+| 2026-10-16 | 2.4 | done | пʼять ключів у `apiKeys`, тести 8/8/0 |
+| 2026-10-16 | 2.1 | done | Jarvis-конфіг з ENV, тести 6/6/0, typecheck 0 |
+| 2026-10-16 | 2.2 | done | тригер-матчер, тести 5/5/0 |
+| 2026-10-16 | 2.3 | done | lint+typecheck+test rc=0, 40/40/0, не гірше baseline |
+| 2026-10-16 | 1.2 | done | baseline: bot rc=0, 31/31/0; infra rc=0 |
 | 2026-10-16 | 5.1 | step rewritten | правило «Репозиторій публічний» внесено окремо (`4350e40`), крок лише перевіряє його й додає згадку гейта |

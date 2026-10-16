@@ -11,6 +11,7 @@ import { registerCommands } from './commands.js';
 import { loadConfig } from './config.js';
 import { connectDatabase } from './database.js';
 import { buildHelpEmbed } from './help.js';
+import { createJarvis } from './jarvis-discord.js';
 import { startDailyQuoteTimer } from './daily-quote.js';
 import { getRandomMotivation } from './motivation.js';
 import { sendPoll } from './poll.js';
@@ -20,6 +21,7 @@ import { extractMentionTarget, formatMentionReply, matchRules, resolveChannels, 
 const config = loadConfig();
 const database = await connectDatabase(config.database);
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMembers] });
+const jarvis = config.jarvis ? createJarvis(config.jarvis, client) : undefined;
 const instanceId = randomUUID();
 const __dirname = dirname(fileURLToPath(import.meta.url));
 let heartbeat: NodeJS.Timeout | undefined;
@@ -43,12 +45,13 @@ client.once(Events.ClientReady, async (readyClient) => {
     startDailyQuoteTimer(client, config.dailyQuoteChannelId, config.dailyQuoteHour);
   }
   console.info(`Discord bot ready as ${readyClient.user.tag}`);
+  console.info(`Jarvis ${jarvis ? 'enabled' : 'disabled'}`);
 });
 
 client.on(Events.InteractionCreate, (interaction) => void (async () => {
   if (!interaction.isChatInputCommand()) return;
   if (interaction.commandName === 'help' || interaction.commandName === 'допомога') {
-    await interaction.reply({ embeds: [buildHelpEmbed()] });
+    await interaction.reply({ embeds: [buildHelpEmbed(Boolean(jarvis))] });
     return;
   }
   if (interaction.commandName === 'ping') {
@@ -199,6 +202,7 @@ client.on(Events.MessageCreate, (message) => void (async () => {
       await message.reply(`<@${userId}> зараз AFK${reason}.`);
     }
   }
+  if (jarvis && await jarvis.handle(message)) return;
   const matched = matchRules(message.content);
   if (!matched) return;
   const { rule } = matched;

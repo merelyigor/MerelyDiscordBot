@@ -26,7 +26,7 @@ function formatPattern(pattern: string, type: string): string {
   return `\`${pattern}\``;
 }
 
-export function buildHelpEmbed(): EmbedBuilder {
+export function buildHelpEmbed(jarvisEnabled = false): EmbedBuilder {
   const embed = new EmbedBuilder()
     .setTitle('Довідка бота')
     .setColor(0x5865f2)
@@ -46,6 +46,16 @@ export function buildHelpEmbed(): EmbedBuilder {
       ].join('\n'),
     },
   );
+
+  if (jarvisEnabled) {
+    embed.addFields({
+      name: 'Джарвіс (ШІ)',
+      value: [
+        'Почни повідомлення зі слова «Джарвіс» (можна з помилкою: джарвис, джервіс, jarvis) і постав питання — відповість ШІ, а для свіжих фактів пошукає в інтернеті й дасть джерела.',
+        'Можна додати зображення. Відповідь (reply) на повідомлення Джарвіса продовжує розмову без слова «Джарвіс».',
+      ].join('\n'),
+    });
+  }
 
   const triggers = rules.map((r, i) => {
     const pat = formatPattern(r.pattern, r.type);
