@@ -2,6 +2,10 @@
 
 Discord-бот на Node.js >=22.12, TypeScript, discord.js, mysql2 і MariaDB. Працює як Docker worker в merely-server-infra; документація проєкту українською.
 
+Що робить: slash-команди `/ping`, `/motivation`, `/remind`, `/afk`, `/poll`, `/mute`, `/help` (`src/commands.ts`, обробка в `src/index.ts`); автовідповіді на повідомлення за `src/data/rules.json` (логіка збігів — `src/rules.ts`); щоденна цитата (`src/daily-quote.ts`, `src/data/quotes.json`, `src/data/daily-targets.json`); нагадування (`src/reminders.ts`) і AFK (`src/afk.ts`).
+
+Дані: MariaDB інфри (за замовчуванням `DB_HOST=infra-mariadb-database`, база з `DB_DATABASE`); таблиці `bot_runtime`, `reminders`, `afk_status` створює `src/database.ts`. Деталі — [база даних](docs/DATABASE.md).
+
 ## Команди й гейти
 
 - `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`.
@@ -19,8 +23,10 @@ Discord-бот на Node.js >=22.12, TypeScript, discord.js, mysql2 і MariaDB. 
 - Production read-only. SSH до production — лише через `ssh_with_password_fallback` з `merely-server-infra/scripts/utils.sh`. Production deploy виконується через infra workflow `deploy-projects.yml` тільки з дозволу власника.
 - `DROP`, `TRUNCATE`, destructive migration і очищення БД — лише з дозволу. Схема створюється ідемпотентним DDL у `src/database.ts`.
 - Секрети не виводити в лог чи відповідь. ENV джерела — `../docker/.env.local` і `../docker/.env.prod`; `../docker/.env` похідний і вручну не редагується.
+- Репозиторій публічний (GitHub `merelyigor/MerelyDiscordBot`, MIT): у git не потрапляють секрети, токени, API-ключі, значення production ENV і приватні дані. Ключі, моделі, ліміти й вмикання функцій (зокрема `OLLAMA_API_KEY` і `JARVIS_*`) задаються лише через ENV; у коді, тестах і документації — тільки назви змінних і несекретні дефолти.
 - Будь-яка зміна команд або поведінки бота синхронно оновлює `src/help.ts` і `src/commands.ts`; `/help` має відповідати поточним командам і автоматичним правилам.
 
 ## Документація
 
 - [Архітектура](docs/ARCHITECTURE.md), [база даних](docs/DATABASE.md), [конфігурація](docs/CONFIGURATION.md), [розробка](docs/DEVELOPMENT.md), [деплой](docs/DEPLOY.md).
+- Змінюєш автовідповіді, цитати чи щоденну цитату — спершу [JSON-файли бота](docs/USER_DATA_GUIDE.md): формат `rules.json` (типи `text`/`regex`/`mention`, `channels`, `targets`, `media`), порядок збігів і перевірка JSON.
