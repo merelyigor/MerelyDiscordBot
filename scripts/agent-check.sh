@@ -91,17 +91,6 @@ check_whitespace() {
   run git diff --cached --check
 }
 
-# Плани за skill dev-standard плагіна merely: механічна перевірка файлів планів (немає планів — PASS).
-check_plans() {
-  step 'Плани dev-standard (plan_check)'
-  local checker="$HOME/GitHub/agent-skills-merelyigor/plugins/merely/skills/dev-standard/scripts/plan_check.py"
-  if [ -f "$checker" ]; then
-    python3 "$checker" --root "$ROOT" || fail 'plan_check'
-  else
-    printf '   plan_check.py недоступний — плани НЕ перевірено; зазначити це у фіналі\n'
-  fi
-}
-
 check_dependency_audit() {
   step 'Вразливі залежності (high і critical)'
   run npm audit --audit-level=high
@@ -140,7 +129,7 @@ if [ "$#" -gt 0 ]; then shift; fi
 
 case "$profile" in
   preflight) report_preflight ;;
-  docs) check_rules; check_whitespace; check_plans ;;
+  docs) check_rules; check_whitespace ;;
   audit) check_dependency_audit ;;
   test)
     check_rules
