@@ -1674,6 +1674,7 @@ bash -c 'set -a; source www/MerelyDiscordBot/docker/.env.prod; curl -s -o /dev/n
 - **Why:** the deploy builds the bot from the `main` branch of the public repo.
 
 **Do:**
+- [ ] From the bot repo run `git log --oneline @{u}..HEAD` and show the list to the owner: the push publishes every listed commit, including commits of other sessions and this public plan.
 - [ ] Ask the owner for a one-time permission to push `merelyigor/MerelyDiscordBot` (`AGENTS.md:13` of the bot); wait for an explicit «так».
 - [ ] From the bot repo run `git push origin main; echo "rc=$?"`.
 - [ ] Run `gh api "repos/merelyigor/MerelyDiscordBot/dependabot/alerts?state=open" --paginate --jq '.[].security_advisory.severity' | sort | uniq -c`.
@@ -1782,3 +1783,4 @@ bash -c 'source scripts/utils.sh >/dev/null 2>&1; ssh_with_password_fallback "do
 | Date | Step | Result | Note |
 | --- | --- | --- | --- |
 | 2026-10-16 | — | plan created | merelyigor; перенесено з `merely-server-infra` P06 |
+| 2026-10-16 | — | plan updated | примітка про виконання в Codex; перед пушем бота показати власнику всі коміти, що підуть |
