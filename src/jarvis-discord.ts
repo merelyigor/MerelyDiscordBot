@@ -16,6 +16,13 @@ const REMEMBERED_ANSWERS = 500;
 const TYPING_INTERVAL_MS = 8000;
 const IMAGE_DOWNLOAD_TIMEOUT_MS = 15_000;
 const USAGE_HINT = 'Напиши питання після слова «Джарвіс», наприклад: «Джарвіс, що таке квантова механіка?»';
+const ALLOWED_JARVIS_ROLES = ['Офісний NPC', 'Офісники'];
+
+function hasJarvisRole(message: { member?: { roles: { cache: Map<string, { name: string }> } } | null }): boolean {
+  const roles = message.member?.roles.cache;
+  if (!roles) return false;
+  return [...roles.values()].some((role) => ALLOWED_JARVIS_ROLES.includes(role.name));
+}
 
 export interface AttachmentInfo {
   url: string;
@@ -119,6 +126,10 @@ export function createJarvis(config: JarvisConfig, client: Client, fetchImpl: ty
       if (question === null) return false;
       const channelId = message.channel.isThread() ? (message.channel.parentId ?? message.channelId) : message.channelId;
       if (config.channelIds.length > 0 && !config.channelIds.includes(channelId)) return false;
+      if (!hasJarvisRole(message)) {
+        await message.reply({ content: 'Ой, а тебе нема в списку допущених до моїх мізків! Джарвіс відповідає лише Офісним NPC та Офісникам — гукни адміністратора сервера, хай видасть роль.', allowedMentions: { parse: [] } });
+        return true;
+      }
       const imageUrls = pickImageAttachments([...message.attachments.values()].map((attachment) => ({
         url: attachment.url, contentType: attachment.contentType, size: attachment.size,
       })));

@@ -1406,6 +1406,47 @@ set `blocked` and stop. A rejected commit message — follow the hook's text onc
 **Notes:**
 - 2026-10-16: чекпоїнт виконано головною сесією: gate rc=0, `built`, коміт `Версія: 1.4.42` (16 файлів). Відхилення від Verify: `git status` показує `M AGENTS.md` — пункт про local-запуск, доданий достроково за вказівкою власника; піде з чекпоїнтом 5.5.
 
+#### Step 4.5 — Role gate: only «Офісний NPC» and «Офісники»
+
+- **Status:** in-progress
+- **Depends on:** Step 4.4
+- **Files:** `src/jarvis-discord.ts` (modify), `tests/jarvis-discord.test.ts` (modify), `src/help.ts` (modify: one sentence)
+- **Why:** Jarvis answers only staff with the two roles; others get a playful denial instead of silence or a model call.
+
+**Do:**
+- [ ] In `src/jarvis-discord.ts`, directly above the `handle` function (or `createJarvis` if `handle` is nested inside it), insert:
+
+```ts
+const ALLOWED_JARVIS_ROLES = ['Офісний NPC', 'Офісники'];
+
+function hasJarvisRole(message: { member?: { roles: { cache: Map<string, { name: string }> } } | null }): boolean {
+  const roles = message.member?.roles.cache;
+  if (!roles) return false;
+  return [...roles.values()].some((role) => ALLOWED_JARVIS_ROLES.includes(role.name));
+}
+```
+- [ ] In `handle`, right after the trigger parse yields a non-null question and before any limiter usage, insert:
+
+```ts
+  if (!hasJarvisRole(message)) {
+    await message.reply({ content: 'Ой, а тебе нема в списку допущених до моїх мізків! Джарвіс відповідає лише Офісним NPC та Офісникам — гукни адміністратора сервера, хай видасть роль.', allowedMentions: { parse: [] } });
+    return true;
+  }
+```
+- [ ] In `src/help.ts`, at the end of the Jarvis description line (the one added in Step 4.3), append one space and: `Доступно учасникам з ролями «Офісний NPC» та «Офісники».`
+- [ ] In `tests/jarvis-discord.test.ts` append tests: (a) message with role `Офісники` reaches the agent; (b) message without roles gets the denial text, the agent is not called, and the reply carries `allowedMentions` `{ parse: [] }`; (c) message with `member: null` gets the denial.
+
+**Verify:**
+- [ ] From the bot repo: `node --import tsx --test --test-reporter=tap tests/jarvis-discord.test.ts` → exit code 0, output has `# fail 0`.
+- [ ] `npm run typecheck` → exit code 0.
+
+**Done when:** role-less users get the denial without a model call and staff pass through.
+
+**If it fails:** discord.js `roles.cache` is a `Collection`, not a `Map` — adapt the iteration (`roles.some` if available, else `[...roles.values()]`) once and note it; otherwise `blocked`.
+
+**Notes:**
+- (none yet)
+
 ---
 
 ## Phase 5 — Bot: public-repository rules and docs

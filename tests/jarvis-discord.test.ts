@@ -9,7 +9,7 @@ const jarvisConfig: JarvisConfig = {
   timeoutMs: 1000, maxToolRounds: 1, userCooldownMs: 0, userDailyLimit: 0, maxConcurrent: 2, channelIds: [],
 };
 
-function mockMessage(options: { id: string; content: string; attachment?: boolean }, sent: unknown[]): Message<true> {
+function mockMessage(options: { id: string; content: string; attachment?: boolean; roleName?: string | null; memberNull?: boolean }, sent: unknown[]): Message<true> {
   const channel = {
     isThread: () => false,
     sendTyping: async () => undefined,
@@ -19,6 +19,7 @@ function mockMessage(options: { id: string; content: string; attachment?: boolea
     id: options.id,
     content: options.content,
     author: { id: `user-${options.id}` },
+    member: options.memberNull ? null : { roles: { cache: new Map(options.roleName === null ? [] : [['role-1', { name: options.roleName ?? 'Офісники' }]]) } },
     channel,
     channelId: 'channel-1',
     reference: undefined,
@@ -99,4 +100,53 @@ test('sets allowedMentions parse to empty on every reply and send', async () => 
   for (const payload of sent) {
     assert.deepEqual((payload as { allowedMentions: { parse: string[] } }).allowedMentions.parse, []);
   }
+});
+
+test('allows staff role to reach the Jarvis agent', async () => {
+  const sent: unknown[] = [];
+  let modelCalls = 0;
+  const fetchImpl = (async () => {
+    modelCalls += 1;
+    return new Response(JSON.stringify({ message: { role: 'assistant', content: 'Вітаю!' } }), { status: 200 });
+  }) as typeof fetch;
+  const jarvis = createJarvis(jarvisConfig, { user: { id: 'bot' } } as unknown as Client, fetchImpl);
+
+  const result = await jarvis.handle(mockMessage({ id: 'staff-role', content: 'Джарвіс, привіт', roleName: 'Офісники' }, sent));
+
+  assert.equal(result, true);
+  assert.equal(modelCalls, 1);
+  assert.equal((sent[0] as { content: string }).content, 'Вітаю!');
+});
+
+test('denies messages without roles before calling the model', async () => {
+  const sent: unknown[] = [];
+  let modelCalls = 0;
+  const fetchImpl = (async () => {
+    modelCalls += 1;
+    return new Response('', { status: 500 });
+  }) as typeof fetch;
+  const jarvis = createJarvis(jarvisConfig, { user: { id: 'bot' } } as unknown as Client, fetchImpl);
+
+  const result = await jarvis.handle(mockMessage({ id: 'no-role', content: 'Джарвіс, привіт', roleName: null }, sent));
+
+  assert.equal(result, true);
+  assert.equal(modelCalls, 0);
+  assert.match((sent[0] as { content: string }).content, /нема в списку допущених/);
+  assert.deepEqual((sent[0] as { allowedMentions: { parse: string[] } }).allowedMentions, { parse: [] });
+});
+
+test('denies messages with a null member before calling the model', async () => {
+  const sent: unknown[] = [];
+  let modelCalls = 0;
+  const fetchImpl = (async () => {
+    modelCalls += 1;
+    return new Response('', { status: 500 });
+  }) as typeof fetch;
+  const jarvis = createJarvis(jarvisConfig, { user: { id: 'bot' } } as unknown as Client, fetchImpl);
+
+  const result = await jarvis.handle(mockMessage({ id: 'null-member', content: 'Джарвіс, привіт', memberNull: true }, sent));
+
+  assert.equal(result, true);
+  assert.equal(modelCalls, 0);
+  assert.match((sent[0] as { content: string }).content, /нема в списку допущених/);
 });
