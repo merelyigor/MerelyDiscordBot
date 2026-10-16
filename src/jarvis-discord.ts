@@ -136,6 +136,10 @@ export function createJarvis(config: JarvisConfig, client: Client, fetchImpl: ty
       const typing = setInterval(() => void message.channel.sendTyping().catch(() => undefined), TYPING_INTERVAL_MS);
       try {
         const [images, history] = await Promise.all([downloadImages(imageUrls), buildHistory(message)]);
+        if (!question.trim() && imageUrls.length > 0 && images.length === 0) {
+          await message.reply({ content: 'Не вдалося завантажити зображення, надішли його ще раз.', allowedMentions: { parse: [], repliedUser: true } });
+          return true;
+        }
         const answer = await askJarvis(ollama, config, { question, images, history, now: new Date() });
         const note = answer.imagesDropped ? '\n\n_(Зображення не враховано: основна модель зараз недоступна.)_' : '';
         const parts = splitForDiscord(`${answer.text}${note}`);

@@ -90,4 +90,21 @@ test('tries the next key on 401 but stays non-retryable at exhaustion', async ()
   await assert.rejects(client.chat('gemma4:31b', []), (error: unknown) =>
     error instanceof OllamaError && error.status === 401 && !error.retryable);
   assert.equal(captured.length, 2);
+  assert.equal(new Headers(captured[1]?.init?.headers).get('authorization'), 'Bearer key-2');
+});
+
+test('rotates to the next key on 403 and sends it as bearer', async () => {
+  const captured: Captured[] = [];
+  let calls = 0;
+  const seq = (async (input: string | URL | Request, init?: RequestInit) => {
+    captured.push({ url: String(input), init });
+    calls += 1;
+    if (calls === 1) return new Response('forbidden', { status: 403 });
+    return new Response(JSON.stringify({ message: { role: 'assistant', content: 'ok' } }), { status: 200 });
+  }) as typeof fetch;
+  const client = createOllamaClient({ baseUrl: 'https://ollama.com', apiKeys: ['key-1', 'key-2'], timeoutMs: 1000, fetchImpl: seq });
+  const result = await client.chat('gemma4:31b', []);
+  assert.equal(result.message.content, 'ok');
+  assert.equal(captured.length, 2);
+  assert.equal(new Headers(captured[1]?.init?.headers).get('authorization'), 'Bearer key-2');
 });

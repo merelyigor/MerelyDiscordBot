@@ -1,6 +1,34 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { isDiscordCdn, limitText, pickImageAttachments, splitForDiscord } from '../src/jarvis-discord.js';
+import { isDiscordCdn, limitText, pickImageAttachments, splitForDiscord, createJarvis } from '../src/jarvis-discord.js';
+import type { JarvisConfig } from '../src/config.js';
+import type { Client, Message } from 'discord.js';
+
+const jarvisConfig: JarvisConfig = {
+  apiKeys: ['test-key'], baseUrl: 'https://ollama.com', model: 'model', fallbackModel: '', webSearch: false,
+  timeoutMs: 1000, maxToolRounds: 1, userCooldownMs: 0, userDailyLimit: 0, maxConcurrent: 2, channelIds: [],
+};
+
+function mockMessage(options: { id: string; content: string; attachment?: boolean }, sent: unknown[]): Message<true> {
+  const channel = {
+    isThread: () => false,
+    sendTyping: async () => undefined,
+    send: async (payload: unknown) => { sent.push(payload); return { id: `sent-${sent.length}` }; },
+  };
+  const message = {
+    id: options.id,
+    content: options.content,
+    author: { id: `user-${options.id}` },
+    channel,
+    channelId: 'channel-1',
+    reference: undefined,
+    attachments: new Map(options.attachment ? [['attachment-1', {
+      url: 'https://cdn.discordapp.com/attachments/1/2/a.png', contentType: 'image/png', size: 100,
+    }]] : []),
+    reply: async (payload: unknown) => { sent.push(payload); return { id: `reply-${sent.length}` }; },
+  };
+  return message as unknown as Message<true>;
+}
 
 test('keeps short answers in one message', () => {
   assert.deepEqual(splitForDiscord('Коротка відповідь.'), ['Коротка відповідь.']);
@@ -39,4 +67,36 @@ test('limit messages tell the user what to do', () => {
   assert.match(limitText({ kind: 'cooldown', retryAfterSeconds: 7 }), /7 с/);
   assert.match(limitText({ kind: 'daily' }), /завтра/);
   assert.match(limitText({ kind: 'busy' }), /хвилину/);
+});
+
+test('reports an image download failure without calling the model', async () => {
+  const sent: unknown[] = [];
+  let modelCalls = 0;
+  const fetchImpl = (async (input: string | URL | Request) => {
+    if (String(input).startsWith('https://ollama.com')) modelCalls += 1;
+    return new Response('', { status: 503 });
+  }) as typeof fetch;
+  const jarvis = createJarvis(jarvisConfig, { user: { id: 'bot' } } as unknown as Client, fetchImpl);
+  const result = await jarvis.handle(mockMessage({ id: 'image-fail', content: 'Джарвіс', attachment: true }, sent));
+  assert.equal(result, true);
+  assert.equal(modelCalls, 0);
+  assert.equal((sent[0] as { content: string }).content, 'Не вдалося завантажити зображення, надішли його ще раз.');
+});
+
+test('sets allowedMentions parse to empty on every reply and send', async () => {
+  const sent: unknown[] = [];
+  let chatCalls = 0;
+  const fetchImpl = (async (_input: string | URL | Request, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body)) as { messages?: Array<{ content: string }> };
+    chatCalls += 1;
+    const content = chatCalls === 1 ? 'a'.repeat(5000) : 'b'.repeat(2500);
+    return new Response(JSON.stringify({ message: { role: 'assistant', content: content || body.messages?.at(-1)?.content || '' } }), { status: 200 });
+  }) as typeof fetch;
+  const jarvis = createJarvis(jarvisConfig, { user: { id: 'bot' } } as unknown as Client, fetchImpl);
+  await jarvis.handle(mockMessage({ id: 'long-1', content: 'Джарвіс, перше питання' }, sent));
+  await jarvis.handle(mockMessage({ id: 'long-2', content: 'Джарвіс, друге питання' }, sent));
+  assert.equal(sent.length, 5);
+  for (const payload of sent) {
+    assert.deepEqual((payload as { allowedMentions: { parse: string[] } }).allowedMentions.parse, []);
+  }
 });

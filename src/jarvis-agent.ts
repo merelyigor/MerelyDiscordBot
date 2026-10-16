@@ -1,4 +1,5 @@
 import { OllamaError, type OllamaClient, type OllamaMessage, type OllamaTool } from './ollama.js';
+import { isIP } from 'node:net';
 
 export interface JarvisAgentSettings {
   model: string;
@@ -33,6 +34,43 @@ interface ModelRun {
 
 const TOOL_RESULT_MAX_CHARS = 8000;
 const IMAGE_ONLY_QUESTION = 'Опиши, що на зображенні.';
+
+function isPrivateIPv4(hostname: string): boolean {
+  const [a, b] = hostname.split('.').map(Number);
+  return a === 0 || a === 10 || a === 127 || a === 169 && b === 254 || a === 172 && b !== undefined && b >= 16 && b <= 31 || a === 192 && b === 168;
+}
+
+function mappedIPv4(hostname: string): string | null {
+  if (!hostname.startsWith('::ffff:')) return null;
+  const address = hostname.slice('::ffff:'.length);
+  if (isIP(address) === 4) return address;
+  const parts = address.split(':');
+  if (parts.length !== 2 || parts.some((part) => !/^[\da-f]{1,4}$/.test(part))) return null;
+  const high = Number.parseInt(parts[0] ?? '', 16);
+  const low = Number.parseInt(parts[1] ?? '', 16);
+  return [high >> 8, high & 0xff, low >> 8, low & 0xff].join('.');
+}
+
+export function isAllowedFetchUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    const hostname = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, '').replace(/\.+$/u, '');
+    const ipVersion = isIP(hostname);
+    if ((parsed.protocol !== 'http:' && parsed.protocol !== 'https:') || !hostname || (!hostname.includes('.') && ipVersion !== 6) || hostname === 'localhost') return false;
+    if (hostname.endsWith('.local') || hostname.endsWith('.internal') || hostname.endsWith('.localhost')) return false;
+    if (isIP(hostname) === 4) {
+      if (isPrivateIPv4(hostname)) return false;
+    }
+    if (ipVersion === 6) {
+      if (hostname === '::' || hostname === '::1' || hostname.startsWith('64:ff9b:') || /^fe[89ab]/.test(hostname) || hostname.startsWith('fc') || hostname.startsWith('fd')) return false;
+      const embeddedIPv4 = mappedIPv4(hostname);
+      if (embeddedIPv4 && isPrivateIPv4(embeddedIPv4)) return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export const JARVIS_TOOLS: OllamaTool[] = [
   {
@@ -88,7 +126,9 @@ async function runTool(client: OllamaClient, name: string, args: Record<string, 
       return JSON.stringify(await client.webSearch(String(args.query ?? ''), clampResults(args.max_results)));
     }
     if (name === 'web_fetch') {
-      const page = await client.webFetch(String(args.url ?? ''));
+      const url = String(args.url ?? '');
+      if (!isAllowedFetchUrl(url)) return 'error: blocked url';
+      const page = await client.webFetch(url);
       return JSON.stringify({ title: page.title, content: page.content, links: page.links.slice(0, 20) });
     }
     return `error: unknown tool ${name}`;
@@ -108,13 +148,14 @@ async function runModel(client: OllamaClient, model: string, messages: OllamaMes
     promptTokens += result.promptTokens;
     outputTokens += result.outputTokens;
     const calls = result.message.tool_calls ?? [];
-    history.push({ role: 'assistant', content: result.message.content, ...(calls.length > 0 ? { tool_calls: calls } : {}) });
-    if (calls.length === 0 || !allowTools) {
+    const executed = calls.slice(0, 4);
+    history.push({ role: 'assistant', content: result.message.content, ...(executed.length > 0 ? { tool_calls: executed } : {}) });
+    if (executed.length === 0 || !allowTools) {
       const text = result.message.content.trim();
       if (!text) throw new OllamaError(`Model ${model} returned an empty answer`, null, true);
       return { text, toolCalls, promptTokens, outputTokens };
     }
-    for (const call of calls) {
+    for (const call of executed) {
       toolCalls += 1;
       const output = await runTool(client, call.function.name, call.function.arguments ?? {});
       history.push({ role: 'tool', tool_name: call.function.name, content: output.slice(0, TOOL_RESULT_MAX_CHARS) });

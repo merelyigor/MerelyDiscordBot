@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { askJarvis, buildSystemPrompt, type JarvisAgentSettings, type JarvisRequest } from '../src/jarvis-agent.js';
+import { askJarvis, buildSystemPrompt, isAllowedFetchUrl, type JarvisAgentSettings, type JarvisRequest } from '../src/jarvis-agent.js';
 import { OllamaError, type OllamaChatResult, type OllamaClient, type OllamaMessage, type OllamaTool } from '../src/ollama.js';
 
 const settings: JarvisAgentSettings = { model: 'gemma4:31b', fallbackModel: 'gpt-oss:120b', webSearch: true, maxToolRounds: 4 };
@@ -104,4 +104,30 @@ test('system prompt carries the date and the search rule', () => {
   assert.match(buildSystemPrompt(now, true), /2026-10-16/);
   assert.match(buildSystemPrompt(now, true), /web_search/);
   assert.doesNotMatch(buildSystemPrompt(now, false), /web_search/);
+});
+
+test('allows public HTTP(S) URLs and blocks local or private destinations', () => {
+  for (const url of ['https://example.com', 'https://example.com./', 'http://sub.example.org/path', 'https://[2001:4860:4860::8888]', 'https://[::ffff:808:808]']) assert.equal(isAllowedFetchUrl(url), true, url);
+  for (const url of [
+    'file:///etc/passwd', 'ftp://example.com', 'https://localhost', 'https://host.local', 'https://x.internal', 'https://service.localhost',
+    'http://127.0.0.1', 'http://10.1.2.3', 'http://172.16.0.1', 'http://172.31.255.1', 'http://192.168.1.1',
+    'http://169.254.1.1', 'http://0.0.0.0', 'http://[::]', 'http://[::1]', 'https://nodot',
+    'http://[fe80::1]', 'http://[fe9f::1]', 'http://[fea0::1]', 'http://[febf::1]',
+    'http://x.localhost./', 'https://localhost./',
+    'http://[fc00::1]', 'http://[fd12::1]', 'http://[::ffff:192.168.1.1]', 'http://[::ffff:c0a8:101]',
+    'http://[64:ff9b::808:808]',
+  ]) assert.equal(isAllowedFetchUrl(url), false, url);
+});
+
+test('executes no more than four tool calls in one round', async () => {
+  const toolCalls = Array.from({ length: 6 }, (_, index) => ({
+    function: { name: 'web_search', arguments: { query: `q${index}` } },
+  }));
+  const { client, calls, searches } = fakeClient((_call, index) => index === 0 ? answer('', toolCalls) : answer('готово'));
+  const result = await askJarvis(client, settings, request);
+  assert.equal(result.toolCalls, 4);
+  assert.deepEqual(searches, ['q0', 'q1', 'q2', 'q3']);
+  const assistantMessage = calls[1]?.messages.find((message) => message.role === 'assistant' && message.tool_calls);
+  assert.equal(assistantMessage?.tool_calls?.length, 4);
+  assert.equal(calls[1]?.messages.filter((message) => message.role === 'tool').length, 4);
 });

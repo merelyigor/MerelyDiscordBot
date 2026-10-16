@@ -45,16 +45,23 @@ function intFromEnv(env: NodeJS.ProcessEnv, name: string, fallback: number): num
 /** Jarvis is off unless JARVIS_ENABLED=true; an empty OLLAMA_API_KEY disables it with a warning instead of failing the bot. */
 export function loadJarvisConfig(env: NodeJS.ProcessEnv = process.env): JarvisConfig | undefined {
   if (env.JARVIS_ENABLED?.trim().toLowerCase() !== 'true') return undefined;
-  const apiKeys = [env.OLLAMA_API_KEY, env.OLLAMA_API_KEY_2, env.OLLAMA_API_KEY_3, env.OLLAMA_API_KEY_4, env.OLLAMA_API_KEY_5]
-    .map((key) => key?.trim())
-    .filter((key): key is string => Boolean(key));
-  if (apiKeys.length === 0) {
+  const primaryKey = env.OLLAMA_API_KEY?.trim();
+  if (!primaryKey) {
     console.warn('Jarvis disabled: OLLAMA_API_KEY is empty');
     return undefined;
   }
+  const apiKeys = [primaryKey, env.OLLAMA_API_KEY_2, env.OLLAMA_API_KEY_3, env.OLLAMA_API_KEY_4, env.OLLAMA_API_KEY_5]
+    .map((key) => key?.trim())
+    .filter((key): key is string => Boolean(key));
+  const baseUrl = env.OLLAMA_BASE_URL?.trim() || 'https://ollama.com';
+  try {
+    if (new URL(baseUrl).protocol !== 'https:') throw new Error('OLLAMA_BASE_URL must be https');
+  } catch {
+    throw new Error('OLLAMA_BASE_URL must be https');
+  }
   return {
     apiKeys,
-    baseUrl: env.OLLAMA_BASE_URL?.trim() || 'https://ollama.com',
+    baseUrl,
     model: env.JARVIS_MODEL?.trim() || 'gemma4:31b',
     fallbackModel: env.JARVIS_FALLBACK_MODEL?.trim() || 'gpt-oss:120b',
     webSearch: (env.JARVIS_WEB_SEARCH?.trim().toLowerCase() || 'true') === 'true',

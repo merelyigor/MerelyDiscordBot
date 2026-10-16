@@ -39,6 +39,7 @@ test('loads Jarvis defaults when enabled', () => {
 test('disables Jarvis without an API key instead of failing', () => {
   assert.equal(loadJarvisConfig({ JARVIS_ENABLED: 'true', OLLAMA_API_KEY: ' ' }), undefined);
   assert.equal(loadConfig({ ...validEnv, JARVIS_ENABLED: 'true' }).jarvis, undefined);
+  assert.equal(loadJarvisConfig({ JARVIS_ENABLED: 'true', OLLAMA_API_KEY_2: 'key-1' }), undefined);
 });
 
 test('parses Jarvis overrides and rejects bad numbers', () => {
@@ -67,4 +68,13 @@ test('collects up to five keys in order and skips empty ones', () => {
 test('a single key still works as a list of one', () => {
   const jarvis = loadJarvisConfig({ JARVIS_ENABLED: 'true', OLLAMA_API_KEY: 'key-1' });
   assert.deepEqual(jarvis?.apiKeys, ['key-1']);
+});
+
+test('requires the primary key before appending reserve keys', () => {
+  const jarvis = loadJarvisConfig({ JARVIS_ENABLED: 'true', OLLAMA_API_KEY: 'key-1', OLLAMA_API_KEY_3: 'key-3' });
+  assert.deepEqual(jarvis?.apiKeys, ['key-1', 'key-3']);
+});
+
+test('rejects a non-HTTPS Ollama base URL', () => {
+  assert.throws(() => loadJarvisConfig({ JARVIS_ENABLED: 'true', OLLAMA_API_KEY: 'test-key', OLLAMA_BASE_URL: 'http://ollama.com' }), /OLLAMA_BASE_URL must be https/);
 });

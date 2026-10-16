@@ -1553,15 +1553,15 @@ bash scripts/agent-check.sh docs; echo "rc=$?"
 
 #### Step 5.5 — Checkpoint: phase 5 is green, commit rules and docs
 
-- **Status:** in-progress
+- **Status:** done
 - **Depends on:** Step 5.4
 - **Files:** bot repo commit of `AGENTS.md`, `.gitignore`, `scripts/agent-check.sh`, `README.md`, `docs/CONFIGURATION.md`, `docs/ARCHITECTURE.md`, and this plan's `plans/P01-discord-jarvis-ai/tasks.md` and `plans/P01-discord-jarvis-ai/plan.md`
 - **Why:** each phase must end in a working state that is safe to stop at.
 
 **Do:**
-- [ ] From the bot repo run `bash scripts/agent-check.sh backend; echo "rc=$?"` and `bash scripts/agent-check.sh docs; echo "rc=$?"`.
-- [ ] Run `git add -- AGENTS.md .gitignore scripts/agent-check.sh README.md docs/CONFIGURATION.md docs/ARCHITECTURE.md plans/P01-discord-jarvis-ai/tasks.md plans/P01-discord-jarvis-ai/plan.md`.
-- [ ] Commit the eight files by explicit paths with the message (version = PATCH + 1 from `git log -1 --format=%s`):
+- [x] From the bot repo run `bash scripts/agent-check.sh backend; echo "rc=$?"` and `bash scripts/agent-check.sh docs; echo "rc=$?"`.
+- [x] Run `git add -- AGENTS.md .gitignore scripts/agent-check.sh README.md docs/CONFIGURATION.md docs/ARCHITECTURE.md plans/P01-discord-jarvis-ai/tasks.md plans/P01-discord-jarvis-ai/plan.md`.
+- [x] Commit the eight files by explicit paths with the message (version = PATCH + 1 from `git log -1 --format=%s`):
 
 ```text
 Версія: <X.Y.Z>
@@ -1580,7 +1580,7 @@ plans/P01-discord-jarvis-ai/plan.md
 ```
 
 **Verify:**
-- [ ] Both gates printed `rc=0`; `git status --short` → empty; `git log -2 --format=%s` shows two new `Версія:` lines in growing order.
+- [x] Both gates printed `rc=0`; `git status --short` → empty; `git log -2 --format=%s` shows two new `Версія:` lines in growing order.
 
 **Done when:** phase 5 acceptance criteria hold with evidence and the change is committed (not pushed).
 
@@ -1589,7 +1589,7 @@ the diff; fix only within that step's scope; if not solvable in one attempt,
 set `blocked` and stop.
 
 **Notes:**
-- (none yet)
+- 2026-10-16: чекпоїнт виконано головною сесією: `backend rc=0`, `docs rc=0`, коміт `Версія: 1.4.43` (7 файлів; `plan.md` без змін з 4.4).
 
 ---
 
@@ -1603,13 +1603,13 @@ set `blocked` and stop.
 
 #### Step 6.1 — Pass the Jarvis variables through Compose
 
-- **Status:** pending
+- **Status:** done
 - **Depends on:** Step 5.5
 - **Files:** `www/MerelyDiscordBot/docker/docker-compose.yml` (modify)
 - **Why:** Compose passes only the variables listed under `environment:`, so without this the code never sees the settings.
 
 **Do:**
-- [ ] Insert these lines (6 spaces of indentation) directly after the line `      BOT_HEALTH_MAX_AGE_SECONDS: ${BOT_HEALTH_MAX_AGE_SECONDS:-90}`:
+- [x] Insert these lines (6 spaces of indentation) directly after the line `      BOT_HEALTH_MAX_AGE_SECONDS: ${BOT_HEALTH_MAX_AGE_SECONDS:-90}`:
 
 ```yaml
       JARVIS_ENABLED: ${JARVIS_ENABLED:-false}
@@ -1631,25 +1631,25 @@ set `blocked` and stop.
 ```
 
 **Verify:**
-- [ ] `grep -c '^      JARVIS_\|^      OLLAMA_' www/MerelyDiscordBot/docker/docker-compose.yml` → `16`.
+- [x] `grep -c '^      JARVIS_\|^      OLLAMA_' www/MerelyDiscordBot/docker/docker-compose.yml` → `16`.
 
 **Done when:** all sixteen variables are in the `environment:` list.
 
 **If it fails:** wrong indentation — every inserted line starts with exactly 6 spaces; fix once, otherwise `blocked`.
 
 **Notes:**
-- (none yet)
+- 2026-10-16: вміст збігається з планом (16 змінних скрізь, `compose rc=0`, `backend rc=0`, `flags rc=0`, секретів від агента немає — ключі вписав власник). Відхилення від 6.3: коміт зробив власник (`v1.5.305`, 136+/0-), агентського коміта не потрібно; дерево чисте.
 
 #### Step 6.2 — Add the Jarvis block to both ENV files
 
-- **Status:** pending
+- **Status:** done
 - **Depends on:** Step 6.1
 - **Files:** `www/MerelyDiscordBot/docker/.env.local` (modify), `www/MerelyDiscordBot/docker/.env.prod` (modify)
 - **Why:** the ENV files are the source of every bot setting; the key stays empty so the agent never handles a secret value.
 
 **Do:**
-- [ ] Read the answer to the Question «хто може користуватися й з якими лімітами» in `plan.md`. Recommended answer or no answer → the values below. Another answer → change only the values of `JARVIS_USER_COOLDOWN_SECONDS`, `JARVIS_USER_DAILY_LIMIT`, `JARVIS_MAX_CONCURRENT`, `JARVIS_CHANNEL_IDS` in this block and write them in `Notes`.
-- [ ] For each of the two files, without printing its content, append the block. The first command adds a final newline only when the file lacks one:
+- [x] Read the answer to the Question «хто може користуватися й з якими лімітами» in `plan.md`. Recommended answer or no answer → the values below. Another answer → change only the values of `JARVIS_USER_COOLDOWN_SECONDS`, `JARVIS_USER_DAILY_LIMIT`, `JARVIS_MAX_CONCURRENT`, `JARVIS_CHANNEL_IDS` in this block and write them in `Notes`.
+- [x] For each of the two files, without printing its content, append the block. The first command adds a final newline only when the file lacks one:
 
 ```bash
 for f in www/MerelyDiscordBot/docker/.env.local www/MerelyDiscordBot/docker/.env.prod; do
@@ -1678,43 +1678,43 @@ done
 ```
 
 **Verify:**
-- [ ] `grep -c '^JARVIS_\|^OLLAMA_' www/MerelyDiscordBot/docker/.env.local www/MerelyDiscordBot/docker/.env.prod` → `16` for each file.
-- [ ] `git diff --stat -- www/MerelyDiscordBot/docker/.env.local www/MerelyDiscordBot/docker/.env.prod` → only insertions (`+`), no deletions.
+- [x] `grep -c '^JARVIS_\|^OLLAMA_' www/MerelyDiscordBot/docker/.env.local www/MerelyDiscordBot/docker/.env.prod` → `16` for each file.
+- [x] `git diff --stat -- www/MerelyDiscordBot/docker/.env.local www/MerelyDiscordBot/docker/.env.prod` → only insertions (`+`), no deletions.
 
 **Done when:** both files have the block with an empty key and `JARVIS_ENABLED=false`.
 
 **If it fails:** a deletion in the diff — restore the file with `git checkout -- <file>` and repeat once; otherwise `blocked`. Never print the files with `cat`.
 
 **Notes:**
-- (none yet)
+- 2026-10-16: вміст збігається з планом (16 змінних скрізь, `compose rc=0`, `backend rc=0`, `flags rc=0`, секретів від агента немає — ключі вписав власник). Відхилення від 6.3: коміт зробив власник (`v1.5.305`, 136+/0-), агентського коміта не потрібно; дерево чисте.
 
 #### Step 6.3 — Checkpoint: infra gates, commit
 
-- **Status:** pending
+- **Status:** done
 - **Depends on:** Step 6.2
 - **Files:** infra commit of `www/MerelyDiscordBot/docker/docker-compose.yml`, `www/MerelyDiscordBot/docker/.env.local`, `www/MerelyDiscordBot/docker/.env.prod` (this plan's files stay in the bot repo)
 - **Why:** each phase must end in a working state that is safe to stop at.
 
 **Do:**
-- [ ] From the infra root run each command and record `rc`:
+- [x] From the infra root run each command and record `rc`:
 
 ```bash
 bash scripts/agent-check.sh compose; echo "rc=$?"
 bash scripts/agent-check.sh project MerelyDiscordBot backend; echo "rc=$?"
 bash scripts/validate-project-deploy-flags.sh; echo "rc=$?"
 ```
-- [ ] Run `git add -- www/MerelyDiscordBot/docker/docker-compose.yml www/MerelyDiscordBot/docker/.env.local www/MerelyDiscordBot/docker/.env.prod`.
-- [ ] Commit the three files by explicit paths: first line `Deploy Server Infra: v<X.Y.Z>` (PATCH + 1 from `git log -1 --format=%s`), the sentence `Бот отримує змінні Джарвіса (план P01 MerelyDiscordBot) через Compose; Джарвіс вимкнений, доки власник не додасть ключ Ollama.`, then `Файли:` and the three paths.
+- [x] Run `git add -- www/MerelyDiscordBot/docker/docker-compose.yml www/MerelyDiscordBot/docker/.env.local www/MerelyDiscordBot/docker/.env.prod`.
+- [x] Commit the three files by explicit paths: first line `Deploy Server Infra: v<X.Y.Z>` (PATCH + 1 from `git log -1 --format=%s`), the sentence `Бот отримує змінні Джарвіса (план P01 MerelyDiscordBot) через Compose; Джарвіс вимкнений, доки власник не додасть ключ Ollama.`, then `Файли:` and the three paths.
 
 **Verify:**
-- [ ] All three commands printed `rc=0` (`compose` renders the Compose file with the ENV and hides the values); `git status --short` in infra → empty.
+- [x] All three commands printed `rc=0` (`compose` renders the Compose file with the ENV and hides the values); `git status --short` in infra → empty.
 
 **Done when:** phase 6 acceptance criteria hold with evidence and the change is committed (not pushed).
 
 **If it fails:** the `compose` gate reports a missing variable — compare the variable names of Step 6.1 and Step 6.2 once; other failures — set `blocked` with the gate output (no ENV values) in `Notes`.
 
 **Notes:**
-- (none yet)
+- 2026-10-16: вміст збігається з планом (16 змінних скрізь, `compose rc=0`, `backend rc=0`, `flags rc=0`, секретів від агента немає — ключі вписав власник). Відхилення від 6.3: коміт зробив власник (`v1.5.305`, 136+/0-), агентського коміта не потрібно; дерево чисте.
 
 ---
 
@@ -1729,7 +1729,7 @@ bash scripts/validate-project-deploy-flags.sh; echo "rc=$?"
 
 #### Step 7.1 — Review the diff and fix confirmed findings
 
-- **Status:** pending
+- **Status:** done
 - **Depends on:** Step 6.3
 - **Files:** the files of Steps 2.1–6.2 (modify only to fix confirmed findings)
 - **Why:** an independent read catches defects the author misses, here especially secret leaks, mention injection and memory use.
@@ -1753,7 +1753,10 @@ If no reviewers were started, or only the author of the change is available, set
 review), and do not review your own change.
 
 **Notes:**
-- (none yet)
+- 2026-10-16, суд головної сесії (коло 1): підтверджено 8 — image-only без зображень, обовʼязковий основний ключ (дубль correctness+contracts), правило `commands.ts`, тест `allowedMentions`, заголовки ротації 401/403, валідатор `web_fetch`, HTTPS для baseUrl, ліміт 4 виклики/раунд; dryrun Low (точна команда local-запуску) теж підтверджено. Відхилено 3: 4.4-Verify (відхилення документоване й закрите в 5.5), постійний gate-тест (поза Scope — у follow-ups власнику), hooksPath у чистому checkout (середовище, вже вимагається правилом `core.hooksPath` у `AGENTS.md`).
+- 2026-10-16: фікси виконавця `jarvis_p71_fixes` прийнято: тести 71/71/0, lint/typecheck/backend 0 (запуски головної сесії), секретів немає. Друге коло — свіжі ревʼюери кутів correctness/contracts/tests/safety/dryrun лише на diff виправлень.
+- 2026-10-16, суд кола 2: contracts і tests — чисто. Підтверджено 3 нові: transcript з необрізаними tool_calls (correctness), приватні IPv6/`.localhost` у валідаторі (safety), суперечність AGENTS.md з `docs/DEVELOPMENT.md` про local-запуск (dryrun). Відхилено: редиректи `web_fetch` — сторона Ollama, код бота адреси призначення не бачить; прийнято як усвідомлений залишковий ризик, без коду.
+- 2026-10-16, коло 3: correctness і dryrun — PASS чисто; safety — 1 новий Medium (крапка в кінці FQDN обходить суфіксні блоки). Ліміт переглядів вичерпано, тож мікрофікс зробила головна сесія: нормалізація кінцевих крапок hostname + тести (`x.localhost./` блоковано, `example.com./` дозволено як легітимний FQDN); агент-тести 10/10/0, повний сюїт 71/71/0, lint/typecheck/backend 0.
 
 ---
 
@@ -1927,7 +1930,16 @@ bash -c 'source scripts/utils.sh >/dev/null 2>&1; ssh_with_password_fallback "do
 | 2026-10-16 | 5.1 | done | правило публічності + гейт |
 | 2026-10-16 | 5.2 | done | .env.* ігноруються |
 | 2026-10-16 | 5.3 | done | секрет-скан у гейті, проби спіймано |
-| 2026-10-16 | 5.4 | done | доки, ENV-назви включно з _2.._5 |
+| 2026-10-16 | 5.4 | done |
+| 2026-10-16 | 6.1 | done | compose 16 змінних |
+| 2026-10-16 | 6.2 | done | env-блоки 16+16 |
+| 2026-10-16 | 7.1r1 | reviewed | 6 кутів: 8 підтверджено, 3 відхилено |
+| 2026-10-16 | 7.1r3 | reviewed | 2 PASS, 1 новий Medium |
+| 2026-10-16 | 7.1fix3 | done | крапка FQDN, тести 10/10, сюїт 71/71/0 |
+| 2026-10-16 | 7.1r2 | reviewed | contracts/tests чисто; 3 нові підтверджено, редиректи — прийнятий ризик |
+| 2026-10-16 | 7.1fix | done | 9 файлів, тести 71/71/0 |
+| 2026-10-16 | 6.3 | done | гейти 0/0/0, коміт власника v1.5.305 |
+| 2026-10-16 | 5.5 | done | backend+docs 0, коміт 1.4.43 (7 файлів) | доки, ENV-назви включно з _2.._5 |
 | 2026-10-16 | 4.4 | done | gate 0, built, коміт 1.4.42 (16 файлів) | проводка до matchRules, /help |
 | 2026-10-16 | 3.3 | done | lint+typecheck+test rc=0, 57/57/0 |
 | 2026-10-16 | 2.4 | done | пʼять ключів у `apiKeys`, тести 8/8/0 |
