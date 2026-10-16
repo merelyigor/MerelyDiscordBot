@@ -1889,7 +1889,7 @@ bash -c 'set -a; source www/MerelyDiscordBot/docker/.env.prod; curl -s -o /dev/n
 
 #### Step 8.4 — Deploy the bot
 
-- **Status:** pending
+- **Status:** skipped
 - **Depends on:** Step 8.3
 - **Files:** none (workflow run)
 - **Why:** bots are deployed only by the manual `deploy-projects.yml` workflow.
@@ -1918,11 +1918,11 @@ bash -c 'source scripts/utils.sh >/dev/null 2>&1; ssh_with_password_fallback "do
 **If it fails:** `Jarvis disabled` in the log — the key did not reach the container: check with the owner that Step 8.1 was pushed before this deploy and redeploy once; a red workflow — `gh run view <id> --repo merelyigor/merely-server-infra --log-failed | tail -40` into `Notes`, then `blocked`. Rollback: section `Rollback` of `plan.md`.
 
 **Notes:**
-- (none yet)
+- 2026-10-16: пропущено за рішенням власника («коміть те що вже є та закривай план 01»): прод-деплой не запускався, дозволу на deploy-projects.yml не було. Винесено в BACKLOG.md.
 
 #### Step 8.5 — Smoke test with the owner
 
-- **Status:** pending
+- **Status:** skipped
 - **Depends on:** Step 8.4
 - **Files:** none (read-only)
 - **Why:** only real Discord messages prove the trigger, the web search and the image path end to end.
@@ -1950,7 +1950,7 @@ bash -c 'source scripts/utils.sh >/dev/null 2>&1; ssh_with_password_fallback "do
 **If it fails:** message 2 answered without links and `tools=0` — record it and ask the owner whether the answer was still correct (the model decides when to search); an error reply — copy the matching `Jarvis failed: status=` line into `Notes` and set `blocked`.
 
 **Notes:**
-- (none yet)
+- 2026-10-16: пропущено разом з 8.4 за рішенням власника; smoke пройдено лише локально (контейнер local, живі повідомлення 2026-10-16), прод-smoke винесено в BACKLOG.md.
 
 ---
 
@@ -1994,3 +1994,6 @@ bash -c 'source scripts/utils.sh >/dev/null 2>&1; ssh_with_password_fallback "do
 | 2026-10-16 | 2.3 | done | lint+typecheck+test rc=0, 40/40/0, не гірше baseline |
 | 2026-10-16 | 1.2 | done | baseline: bot rc=0, 31/31/0; infra rc=0 |
 | 2026-10-16 | 5.1 | step rewritten | правило «Репозиторій публічний» внесено окремо (`4350e40`), крок лише перевіряє його й додає згадку гейта |
+| 2026-10-16 | 4.5-8.3 | done | рольова брама, тригер з вітанням, памʼять 20/72г, примусовий веб-пошук, серверний пошук, read_channel, m!play; коміти 1.4.44–1.4.50, пуш |
+| 2026-10-16 | 7.1inc | reviewed | інкременти після 7.1fix перевірені головною сесією (ревʼю власного diff, гейти 92/92/0); незалежних ревʼюерів не було — режим без субагентів |
+| 2026-10-16 | 8.4-8.5 | skipped | закрито за рішенням власника без прод-деплою; деплой+smoke → BACKLOG.md |

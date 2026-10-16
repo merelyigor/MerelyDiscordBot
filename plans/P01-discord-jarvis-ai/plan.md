@@ -16,16 +16,16 @@
 
 ## Definition of Done
 
-- [ ] Повідомлення з першим словом «джарвіс» або варіантом з однією помилкою отримує відповідь моделі `gemma4:31b`. Повідомлення без тригера, зокрема «дарвін …», поводяться як раніше, а правила `rules.json` спрацьовують: `tests/jarvis-trigger.test.ts` і наявні тести зелені, smoke-перевірка кроку 8.5 (пункти 4 і 5) пройдена.
-- [ ] Для питань про свіжі факти агент викликає `web_search`/`web_fetch` і дає 1–3 джерела, для загальних знань відповідає без пошуку: тести `tests/jarvis-agent.test.ts` і smoke 8.5.
-- [ ] Зображення з повідомлення передаються моделі: smoke 8.5, запит із картинкою.
-- [ ] Помилка мережі, таймаут або відповідь 404/408/429/5xx від основної моделі спершу перебирає ключі `OLLAMA_API_KEY`, `OLLAMA_API_KEY_2.._5` на тій самій моделі; лише коли всі ключі вичерпано, відповідає резервна `gpt-oss:120b` (з тим самим перебором ключів). 401/403 пробує наступний ключ, але до резервної моделі не веде: `tests/ollama.test.ts`, `tests/jarvis-agent.test.ts`.
-- [ ] Без ролей «Офісний NPC»/«Офісники» Джарвіс жартівливо відмовляє й радить звернутись до адміністраторів, модель не викликається: `tests/jarvis-discord.test.ts`.
-- [ ] Бот не падає, коли жодного ключа немає (`tests/config.test.ts`) або Ollama недоступний (`tests/jarvis-agent.test.ts`, відповідь-помилка замість винятку в `handle()`).
-- [ ] Ключі, моделі, ліміти й вмикання задаються лише через ENV. `AGENTS.md` бота прямо каже, що репозиторій публічний і секретів у ньому бути не може, а гейт `docs`, який запускає pre-push, падає на файлі зі схожим на токен рядком: кроки 5.1–5.3.
-- [ ] Прод-деплой бота зелений, smoke 8.5 пройдено.
-- [ ] All steps are `done` or `skipped` with a note explaining the skip.
-- [ ] Final verification passed (see `Final verification`).
+- [x] Повідомлення з першим словом «джарвіс» або варіантом з однією помилкою отримує відповідь моделі `gemma4:31b`. Повідомлення без тригера, зокрема «дарвін …», поводяться як раніше, а правила `rules.json` спрацьовують: `tests/jarvis-trigger.test.ts` і наявні тести зелені, smoke-перевірка кроку 8.5 (пункти 4 і 5) пройдена (smoke пунктів 4–5 — локально 2026-10-16; прод пропущено, див. нижче).
+- [x] Для питань про свіжі факти агент викликає `web_search`/`web_fetch` і дає 1–3 джерела, для загальних знань відповідає без пошуку: тести `tests/jarvis-agent.test.ts` і smoke 8.5 (smoke — локально 2026-10-16; прод пропущено, див. нижче).
+- [x] Зображення з повідомлення передаються моделі: smoke 8.5, запит із картинкою (локальний smoke 2026-10-16; прод пропущено, див. нижче).
+- [x] Помилка мережі, таймаут або відповідь 404/408/429/5xx від основної моделі спершу перебирає ключі `OLLAMA_API_KEY`, `OLLAMA_API_KEY_2.._5` на тій самій моделі; лише коли всі ключі вичерпано, відповідає резервна `gpt-oss:120b` (з тим самим перебором ключів). 401/403 пробує наступний ключ, але до резервної моделі не веде: `tests/ollama.test.ts`, `tests/jarvis-agent.test.ts`.
+- [x] Без ролей «Офісний NPC»/«Офісники» Джарвіс жартівливо відмовляє й радить звернутись до адміністраторів, модель не викликається: `tests/jarvis-discord.test.ts`.
+- [x] Бот не падає, коли жодного ключа немає (`tests/config.test.ts`) або Ollama недоступний (`tests/jarvis-agent.test.ts`, відповідь-помилка замість винятку в `handle()`).
+- [x] Ключі, моделі, ліміти й вмикання задаються лише через ENV. `AGENTS.md` бота прямо каже, що репозиторій публічний і секретів у ньому бути не може, а гейт `docs`, який запускає pre-push, падає на файлі зі схожим на токен рядком: кроки 5.1–5.3.
+- [x] Прод-деплой бота зелений, smoke 8.5 пройдено. — пропущено за рішенням власника 2026-10-16 («закривай план 01» без прод-деплою): кроки 8.4–8.5 skipped, деплой+smoke винесено в BACKLOG.md.
+- [x] All steps are `done` or `skipped` with a note explaining the skip.
+- [x] Final verification passed (see `Final verification`).
 
 ## Scope
 
@@ -223,11 +223,11 @@ after any interruption.
 
 ## Final verification
 
-- [ ] From the bot repo root: `bash scripts/agent-check.sh backend` → exit code 0 and no `FAIL:` line.
-- [ ] From the bot repo root: `bash scripts/agent-check.sh docs` → exit code 0.
-- [ ] From the infra root: `bash scripts/agent-check.sh compose` and `bash scripts/agent-check.sh project MerelyDiscordBot backend` → exit code 0 each.
-- [ ] `git status --short` in both repos → only this plan's own files (`plan.md`, `tasks.md`) are uncommitted — instruction 12 commits them next; other sessions' changes that appeared during the plan are listed in `Notes` of the review step and are not touched.
-- [ ] Smoke 8.5 passed: every smoke message of Step 8.5 got the expected reaction, and the production log has `Jarvis answered: model=gemma4:31b` lines without message text.
+- [x] From the bot repo root: `bash scripts/agent-check.sh backend` → exit code 0 and no `FAIL:` line.
+- [x] From the bot repo root: `bash scripts/agent-check.sh docs` → exit code 0.
+- [x] From the infra root: `bash scripts/agent-check.sh compose` and `bash scripts/agent-check.sh project MerelyDiscordBot backend` → exit code 0 each.
+- [x] `git status --short` in both repos → файли плану + `.idea/dataSources.xml` (чужі зміни IDE власника, не чіпали; в інфрі дерево чисте) (`plan.md`, `tasks.md`) are uncommitted — instruction 12 commits them next; other sessions' changes that appeared during the plan are listed in `Notes` of the review step and are not touched.
+- [x] Smoke 8.5 passed: — прод-smoke пропущено за рішенням власника 2026-10-16; локальний smoke 2026-10-16 пройдено (контейнер local: тригер, пошук з джерелами, картинка, ролі, канали, музика-копіпаст; у лозі `Jarvis answered: model=gemma4:31b` без тексту повідомлень). every smoke message of Step 8.5 got the expected reaction, and the production log has `Jarvis answered: model=gemma4:31b` lines without message text.
 
 ## Rollback
 
