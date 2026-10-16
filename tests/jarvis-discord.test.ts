@@ -320,11 +320,13 @@ test('attaches a gif through the send_gif tool', async () => {
   const sent: unknown[] = [];
   const gifBytes = Buffer.from('GIF89a-test');
   let chatCalls = 0;
+  const giphyUrls: string[] = [];
   const fetchImpl = (async (input: string | URL | Request) => {
     const url = String(input);
     if (url.includes('api.giphy.com')) {
+      giphyUrls.push(url);
       return new Response(JSON.stringify({
-        data: [{ images: { downsized: { url: 'https://media.giphy.com/test-gif.gif' } } }],
+        data: [{ url: 'https://giphy.com/gifs/test-gif', images: { downsized: { url: 'https://media.giphy.com/test-gif.gif' } } }],
       }), { status: 200 });
     }
     if (url.includes('media.giphy.com')) {
@@ -346,6 +348,7 @@ test('attaches a gif through the send_gif tool', async () => {
   assert.match(reply.content, /гіфка/);
   assert.equal(reply.files?.length, 1);
   assert.match(reply.files?.[0]?.name ?? '', /\.gif$/);
+  assert.ok(giphyUrls.some((u) => u.includes('offset=')), 'giphy search uses a random offset so repeats vary');
 });
 
 test('falls back to a giphy link when no API key is set', async () => {

@@ -321,11 +321,13 @@ export function createJarvis(config: JarvisConfig, client: Client, fetchImpl: ty
       if (pendingMedia.length >= MAX_MEDIA_ATTACHMENTS) return 'error: media limit reached for this answer';
       const attempts = [q, transliterateUk(q)].filter((variant, index, all) => variant && all.indexOf(variant) === index);
       for (const attempt of attempts) {
-        const params = new URLSearchParams({ api_key: config.giphyApiKey, q: attempt, limit: '3', rating: 'g' });
+        // Random offset so repeated vague requests ("дай популярну", "ще одну") land on different gifs.
+        const offset = Math.floor(Math.random() * 25);
+        const params = new URLSearchParams({ api_key: config.giphyApiKey, q: attempt, limit: '3', offset: String(offset), rating: 'g' });
         const search = await fetchImpl(`${GIPHY_SEARCH_URL}?${params}`, { signal: AbortSignal.timeout(IMAGE_DOWNLOAD_TIMEOUT_MS) }).catch(() => null);
         if (!search?.ok) continue;
         const payload = (await search.json().catch(() => null)) as {
-          data?: Array<{ images?: Record<string, { url?: string } | undefined> }>;
+          data?: Array<{ url?: string; images?: Record<string, { url?: string } | undefined> }>;
         } | null;
         for (const item of payload?.data ?? []) {
           const url = [item.images?.downsized?.url, item.images?.fixed_height?.url, item.images?.original?.url]
@@ -334,7 +336,8 @@ export function createJarvis(config: JarvisConfig, client: Client, fetchImpl: ty
           const data = await downloadMedia(url);
           if (!data) continue;
           const filename = pushMedia('gif', url, data);
-          return `attached ${filename} for "${q}"; mention it briefly in the answer text`;
+          const page = typeof item.url === 'string' && item.url.startsWith('https://giphy.com/') ? ` (${item.url})` : '';
+          return `attached ${filename} for "${q}"${page}; mention it briefly in the answer text`;
         }
       }
       return 'error: no suitable gif found';

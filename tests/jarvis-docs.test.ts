@@ -33,6 +33,11 @@ test('system prompt has no unreplaced placeholders and includes bot capabilities
   assert.match(prompt, /\/мотивація/);
 });
 
+test('gif rule tells the model to vary requests and not repeat gifs', () => {
+  const prompt = buildSystemPrompt(new Date('2026-10-16T00:00:00Z'), true);
+  assert.match(prompt, /не повторюй гіфку/i);
+});
+
 test('help embed mentions the gif capability', () => {
   const json = buildHelpEmbed(true).toJSON();
   const text = (json.fields ?? []).map((field) => `${field.name} ${field.value}`).join('\n');
