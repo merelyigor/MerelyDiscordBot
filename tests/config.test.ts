@@ -34,6 +34,9 @@ test('loads Jarvis defaults when enabled', () => {
   assert.equal(jarvis.userDailyLimit, 40);
   assert.equal(jarvis.maxConcurrent, 2);
   assert.deepEqual(jarvis.channelIds, []);
+  assert.equal(jarvis.memoryMessages, 20);
+  assert.equal(jarvis.memoryTtlMs, 72 * 3_600_000);
+  assert.equal(jarvis.musicChannelId, '697224336460873761');
 });
 
 test('disables Jarvis without an API key instead of failing', () => {
@@ -45,11 +48,14 @@ test('disables Jarvis without an API key instead of failing', () => {
 test('parses Jarvis overrides and rejects bad numbers', () => {
   const jarvis = loadJarvisConfig({
     JARVIS_ENABLED: 'TRUE', OLLAMA_API_KEY: 'test-key', JARVIS_WEB_SEARCH: 'false',
-    JARVIS_CHANNEL_IDS: '1, 2,,3', JARVIS_USER_DAILY_LIMIT: '0',
+    JARVIS_CHANNEL_IDS: '1, 2,,3', JARVIS_USER_DAILY_LIMIT: '0', JARVIS_MEMORY_MESSAGES: '10', JARVIS_MEMORY_TTL_HOURS: '48',
   });
   assert.equal(jarvis?.webSearch, false);
   assert.deepEqual(jarvis?.channelIds, ['1', '2', '3']);
   assert.equal(jarvis?.userDailyLimit, 0);
+  assert.equal(jarvis?.memoryMessages, 10);
+  assert.equal(jarvis?.memoryTtlMs, 48 * 3_600_000);
+  assert.equal(loadJarvisConfig({ JARVIS_ENABLED: 'true', OLLAMA_API_KEY: 'k', MUSIC_CHANNEL_ID: '  555 ' })?.musicChannelId, '555');
   assert.throws(
     () => loadJarvisConfig({ JARVIS_ENABLED: 'true', OLLAMA_API_KEY: 'test-key', JARVIS_USER_DAILY_LIMIT: '-1' }),
     /JARVIS_USER_DAILY_LIMIT must be a non-negative integer/,

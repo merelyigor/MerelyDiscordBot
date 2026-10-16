@@ -30,7 +30,9 @@ test('extracts the question after the trigger', () => {
 });
 
 test('returns null when the message does not start with the trigger', () => {
-  assert.equal(parseJarvisTrigger('привіт джарвіс'), null);
+  assert.equal(parseJarvisTrigger('привіт джарвіс'), '');
+  assert.equal(parseJarvisTrigger('йоу джарвіс, коли буде продовження аніме one piece'), 'коли буде продовження аніме one piece');
+  assert.equal(parseJarvisTrigger('а ти чув що джарвіс казав'), null);
   assert.equal(parseJarvisTrigger('дарвін — це хто?'), null);
   assert.equal(parseJarvisTrigger(''), null);
 });

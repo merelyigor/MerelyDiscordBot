@@ -1,15 +1,16 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { isDiscordCdn, limitText, pickImageAttachments, splitForDiscord, createJarvis } from '../src/jarvis-discord.js';
+import { extractKeywords, isDiscordCdn, limitText, pickImageAttachments, searchServerMessages, splitForDiscord, createJarvis } from '../src/jarvis-discord.js';
 import type { JarvisConfig } from '../src/config.js';
 import type { Client, Message } from 'discord.js';
 
 const jarvisConfig: JarvisConfig = {
   apiKeys: ['test-key'], baseUrl: 'https://ollama.com', model: 'model', fallbackModel: '', webSearch: false,
-  timeoutMs: 1000, maxToolRounds: 1, userCooldownMs: 0, userDailyLimit: 0, maxConcurrent: 2, channelIds: [],
+  timeoutMs: 1000, maxToolRounds: 2, userCooldownMs: 0, userDailyLimit: 0, maxConcurrent: 2, channelIds: [],
+  memoryMessages: 20, memoryTtlMs: 72 * 3_600_000, musicChannelId: '999',
 };
 
-function mockMessage(options: { id: string; content: string; attachment?: boolean; roleName?: string | null; memberNull?: boolean }, sent: unknown[]): Message<true> {
+function mockMessage(options: { id: string; content: string; attachment?: boolean; roleName?: string | null; memberNull?: boolean; guild?: unknown }, sent: unknown[]): Message<true> {
   const channel = {
     isThread: () => false,
     sendTyping: async () => undefined,
@@ -22,6 +23,7 @@ function mockMessage(options: { id: string; content: string; attachment?: boolea
     member: options.memberNull ? null : { roles: { cache: new Map(options.roleName === null ? [] : [['role-1', { name: options.roleName ?? 'Офісники' }]]) } },
     channel,
     channelId: 'channel-1',
+    guild: (options.guild ?? null) as unknown as Message<true>['guild'],
     reference: undefined,
     attachments: new Map(options.attachment ? [['attachment-1', {
       url: 'https://cdn.discordapp.com/attachments/1/2/a.png', contentType: 'image/png', size: 100,
@@ -149,4 +151,167 @@ test('denies messages with a null member before calling the model', async () => 
   assert.equal(result, true);
   assert.equal(modelCalls, 0);
   assert.match((sent[0] as { content: string }).content, /нема в списку допущених/);
+});
+
+test('reads a mentioned channel through the read_channel tool', async () => {
+  const sent: unknown[] = [];
+  const historyChannel = {
+    isTextBased: () => true,
+    messages: {
+      fetch: async () => new Map([
+        ['m1', { author: { username: 'Ann' }, content: 'привіт усім' }],
+        ['m2', { author: { username: 'Bob' }, content: 'йо!' }],
+      ]),
+    },
+  };
+  const guild = {
+    channels: {
+      cache: new Map([['111', historyChannel]]),
+      fetch: async (id: string) => (id === '111' ? historyChannel : null),
+    },
+  };
+  let chatCalls = 0;
+  const fetchImpl = (async () => {
+    chatCalls += 1;
+    const message = chatCalls === 1
+      ? { role: 'assistant', content: '', tool_calls: [{ function: { name: 'read_channel', arguments: { channel_id: '<#111>' } } }] }
+      : { role: 'assistant', content: 'Переказ: Ann і Bob віталися.' };
+    return new Response(JSON.stringify({ message }), { status: 200 });
+  }) as typeof fetch;
+  const jarvis = createJarvis(jarvisConfig, { user: { id: 'bot' } } as unknown as Client, fetchImpl);
+
+  const result = await jarvis.handle(mockMessage({ id: 'read-1', content: 'Джарвіс, що писали в каналі?', guild }, sent));
+
+  assert.equal(result, true);
+  assert.equal(chatCalls, 2);
+  assert.match((sent[0] as { content: string }).content, /Переказ/);
+});
+
+test('sends m!play to the music channel through the music_play tool', async () => {
+  const sent: unknown[] = [];
+  const musicSent: unknown[] = [];
+  const musicChannel = {
+    isTextBased: () => true,
+    send: async (text: string) => { musicSent.push(text); return { id: 'music-1' }; },
+  };
+  const guild = {
+    channels: {
+      cache: new Map([['999', musicChannel]]),
+      fetch: async (id: string) => (id === '999' ? musicChannel : null),
+    },
+  };
+  let chatCalls = 0;
+  const fetchImpl = (async () => {
+    chatCalls += 1;
+    const message = chatCalls === 1
+      ? { role: 'assistant', content: '', tool_calls: [{ function: { name: 'music_play', arguments: { query: 'Lana Del Rey - Young and Beautiful' } } }] }
+      : { role: 'assistant', content: 'Увімкнув, приємного прослуховування!' };
+    return new Response(JSON.stringify({ message }), { status: 200 });
+  }) as typeof fetch;
+  const jarvis = createJarvis(jarvisConfig, { user: { id: 'bot' } } as unknown as Client, fetchImpl);
+
+  const result = await jarvis.handle(mockMessage({ id: 'music-1', content: 'Джарвіс, увімкни душевну пісню', guild }, sent));
+
+  assert.equal(result, true);
+  assert.deepEqual(musicSent, ['m!play Lana Del Rey - Young and Beautiful']);
+  assert.match((sent[0] as { content: string }).content, /Увімкнув/);
+});
+
+test('searches all channels and returns jump links through search_messages', async () => {
+  const sent: unknown[] = [];
+  const channelA = {
+    id: '111', name: 'films',
+    isTextBased: () => true,
+    messages: {
+      fetch: async () => new Map([
+        ['m1', { id: 'm1', author: { username: 'Ann' }, content: 'дивилася Тачки 2 вчора' }],
+      ]),
+    },
+  };
+  const channelB = {
+    id: '222', name: 'flood',
+    isTextBased: () => true,
+    messages: {
+      fetch: async () => new Map([
+        ['m2', { id: 'm2', author: { username: 'Bob' }, content: 'привіт усім' }],
+      ]),
+    },
+  };
+  const guild = {
+    id: 'guild-1',
+    channels: {
+      cache: new Map([['111', channelA], ['222', channelB]]),
+      fetch: async (id: string) => (id === '111' ? channelA : channelB),
+    },
+  };
+  let chatCalls = 0;
+  const fetchImpl = (async () => {
+    chatCalls += 1;
+    const message = chatCalls === 1
+      ? { role: 'assistant', content: '', tool_calls: [{ function: { name: 'search_messages', arguments: { query: 'тачки' } } }] }
+      : { role: 'assistant', content: 'Писали у #films.' };
+    return new Response(JSON.stringify({ message }), { status: 200 });
+  }) as typeof fetch;
+  const jarvis = createJarvis(jarvisConfig, { user: { id: 'bot' } } as unknown as Client, fetchImpl);
+
+  const result = await jarvis.handle(mockMessage({ id: 'search-1', content: 'Джарвіс, де писали про тачки?', guild }, sent));
+
+  assert.equal(result, true);
+  assert.equal(chatCalls, 2);
+  assert.match((sent[0] as { content: string }).content, /Писали/);
+});
+
+test('extracts content keywords without stop-words', () => {
+  assert.deepEqual(
+    extractKeywords('знайди в якому чаті і хто писав про фільм тачки'),
+    ['фільм', 'тачки'],
+  );
+  assert.deepEqual(extractKeywords('де ти'), []);
+});
+
+test('searches every channel, skips the asker and the bot itself', async () => {
+  const channelA = {
+    id: '111', name: 'films',
+    isTextBased: () => true,
+    messages: {
+      fetch: async () => new Map([
+        ['m1', { id: 'm1', author: { id: 'ann', username: 'Ann' }, content: 'Тачки 2 огонь' }],
+        ['m2', { id: 'self-1', author: { id: 'me', username: 'Me' }, content: 'де писали про тачки' }],
+        ['m3', { id: 'bot-1', author: { id: 'bot', username: 'MerelyBot' }, content: 'Тачки найкращі' }],
+      ]),
+    },
+  };
+  const channelB = {
+    id: '222', name: 'flood',
+    isTextBased: () => true,
+    messages: {
+      fetch: async () => new Map([
+        ['m4', { id: 'm4', author: { id: 'bob', username: 'Bob' }, content: 'привіт усім' }],
+      ]),
+    },
+  };
+  const guild = {
+    id: 'guild-1',
+    channels: { cache: new Map([['222', channelB], ['111', channelA]]) },
+  };
+  const out = await searchServerMessages(guild as never, '222', 'self-1', 'bot', 'де писали про тачки');
+  assert.match(out, /Ann/);
+  assert.match(out, /discord\.com\/channels\/guild-1\/111\/m1/);
+  assert.doesNotMatch(out, /MerelyBot/);
+  assert.doesNotMatch(out, /де писали про тачки/);
+});
+
+test('reports an empty server search honestly', async () => {
+  const guild = {
+    id: 'guild-1',
+    channels: {
+      cache: new Map([['111', {
+        id: '111', name: 'films',
+        isTextBased: () => true,
+        messages: { fetch: async () => new Map() },
+      }]]),
+    },
+  };
+  assert.equal(await searchServerMessages(guild as never, '111', 'self-1', 'bot', 'де писали про тачки'), 'nothing found on this server');
+  assert.equal(await searchServerMessages(guild as never, '111', 'self-1', 'bot', 'де ти'), 'error: empty query');
 });

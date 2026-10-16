@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { askJarvis, buildSystemPrompt, isAllowedFetchUrl, type JarvisAgentSettings, type JarvisRequest } from '../src/jarvis-agent.js';
+import { askJarvis, buildSystemPrompt, isAllowedFetchUrl, needsForcedSearch, needsServerSearch, type JarvisAgentSettings, type JarvisRequest } from '../src/jarvis-agent.js';
 import { OllamaError, type OllamaChatResult, type OllamaClient, type OllamaMessage, type OllamaTool } from '../src/ollama.js';
 
 const settings: JarvisAgentSettings = { model: 'gemma4:31b', fallbackModel: 'gpt-oss:120b', webSearch: true, maxToolRounds: 4 };
@@ -36,8 +36,9 @@ function answer(content: string, toolCalls?: OllamaMessage['tool_calls']): Ollam
 }
 
 test('answers without tools when the model does not ask for them', async () => {
-  const { client, calls } = fakeClient(() => answer('Теорія Ейнштейна.'));
+  const { client, calls, searches } = fakeClient(() => answer('Теорія Ейнштейна.'));
   const result = await askJarvis(client, settings, request);
+  assert.deepEqual(searches, []);
   assert.equal(result.text, 'Теорія Ейнштейна.');
   assert.equal(result.model, 'gemma4:31b');
   assert.equal(result.usedFallback, false);
@@ -51,8 +52,8 @@ test('runs web_search and returns the final answer', async () => {
     ? answer('', [{ function: { name: 'web_search', arguments: { query: 'Flintstones new season', max_results: 3 } } }])
     : answer('Новий сезон — 2027. Джерело: https://example.com/news'));
   const result = await askJarvis(client, settings, { ...request, question: 'коли вийде новий сезон Флінтстоунів' });
-  assert.equal(result.toolCalls, 1);
-  assert.deepEqual(searches, ['Flintstones new season']);
+  assert.equal(result.toolCalls, 2);
+  assert.deepEqual(searches, ['коли вийде новий сезон Флінтстоунів', 'Flintstones new season']);
   const toolMessage = calls[1]?.messages.find((message) => message.role === 'tool');
   assert.equal(toolMessage?.tool_name, 'web_search');
   assert.match(toolMessage?.content ?? '', /example\.com\/news/);
@@ -100,9 +101,94 @@ test('does not send an image-only request to the text-only fallback', async () =
   assert.equal(calls.length, 1);
 });
 
+test('detects an explicit search intent', () => {
+  for (const q of ['відшукай посилання на тачки 2', 'коли вийде новий сезон', 'хто такий n0op', 'актуальні ціни на RTX']) {
+    assert.equal(needsForcedSearch(q), true, q);
+  }
+  for (const q of ['що таке теорія відносності', 'привіт', 'а простіше?']) {
+    assert.equal(needsForcedSearch(q), false, q);
+  }
+});
+
+test('runs a forced search before the model for intent questions', async () => {
+  const { client, calls, searches } = fakeClient(() => answer('Ось посилання.'));
+  const result = await askJarvis(client, settings, { ...request, question: 'відшукай посилання на тачки 2' });
+  assert.deepEqual(searches, ['відшукай посилання на тачки 2']);
+  assert.equal(calls[0]?.messages.filter((m) => m.role === 'system').length, 2);
+  assert.equal(result.toolCalls, 1);
+});
+
+test('dispatches discord tools to the provided handlers', async () => {
+  const discord = {
+    readChannel: async (id: string, limit: number) => `history of ${id} x${limit}`,
+    playMusic: async (query: string) => `playing ${query}`,
+  };
+  const { client } = fakeClient((_call, index) => index === 0
+    ? answer('', [
+      { function: { name: 'read_channel', arguments: { channel_id: '<#123>', limit: 5 } } },
+      { function: { name: 'music_play', arguments: { query: 'Lana Del Rey' } } },
+    ])
+    : answer('Готово.'));
+  const result = await askJarvis(client, settings, request, discord);
+  assert.equal(result.text, 'Готово.');
+  assert.equal(result.toolCalls, 2);
+});
+
+test('dispatches server search to the provided handler', async () => {
+  const discord = {
+    readChannel: async () => 'empty',
+    playMusic: async () => 'silent',
+    searchMessages: async (query: string) => `hits for ${query}`,
+  };
+  const { client } = fakeClient((_call, index) => index === 0
+    ? answer('', [{ function: { name: 'search_messages', arguments: { query: 'тачки 2' } } }])
+    : answer('Знайшов.'));
+  const result = await askJarvis(client, settings, { ...request, question: 'де писали про тачки' }, discord);
+  assert.equal(result.text, 'Знайшов.');
+  assert.equal(result.toolCalls, 2);
+});
+
+test('detects a server-scope intent', () => {
+  for (const qq of ['де писали про тачки', 'хто писав про фільм', 'що писали в каналі', 'знайди в якому чаті обговорювали']) {
+    assert.equal(needsServerSearch(qq), true, qq);
+  }
+  for (const qq of ['що таке теорія відносності', 'увімкни душевну пісню', 'коли вийде новий сезон', 'відшукай посилання']) {
+    assert.equal(needsServerSearch(qq), false, qq);
+  }
+});
+
+test('answers server questions from server messages without the web', async () => {
+  const discord = {
+    readChannel: async () => 'empty',
+    playMusic: async () => 'silent',
+    searchMessages: async (query: string) => `#films, Ann: люблю Тачки — https://discord.com/channels/g/111/m1 [${query}]`,
+  };
+  const { client, calls, searches } = fakeClient(() => answer('Писали у #films.'));
+  const result = await askJarvis(client, settings, { ...request, question: 'де писали про тачки' }, discord);
+  assert.deepEqual(searches, []);
+  assert.equal(calls[0]?.tools?.some((tool) => tool.function?.name === 'web_search'), false);
+  assert.equal(calls[0]?.tools?.some((tool) => tool.function?.name === 'search_messages'), true);
+  assert.match(calls[0]?.messages[1]?.content ?? '', /НАШОГО Discord-сервера/);
+  assert.equal(result.toolCalls, 1);
+});
+
+test('reports discord tools as unavailable without handlers', async () => {
+  const { client, calls } = fakeClient((_call, index) => index === 0
+    ? answer('', [{ function: { name: 'music_play', arguments: { query: 'x' } } }])
+    : answer('Немає музики.'));
+  const result = await askJarvis(client, settings, { ...request, question: 'увімкни музику' });
+  const toolMessage = calls[1]?.messages.find((message) => message.role === 'tool');
+  assert.match(toolMessage?.content ?? '', /unavailable/);
+  assert.equal(result.text, 'Немає музики.');
+});
+
 test('system prompt carries the date and the search rule', () => {
   assert.match(buildSystemPrompt(now, true), /2026-10-16/);
   assert.match(buildSystemPrompt(now, true), /web_search/);
+  assert.match(buildSystemPrompt(now, true), /ОБОВ'ЯЗКОВО/);
+  assert.match(buildSystemPrompt(now, true), /не знаю/);
+  assert.match(buildSystemPrompt(now, true), /MerelyBot/);
+  assert.match(buildSystemPrompt(now, true), /slash-команди/);
   assert.doesNotMatch(buildSystemPrompt(now, false), /web_search/);
 });
 

@@ -2,6 +2,8 @@ import type { Client, Message } from 'discord.js';
 import type { JarvisConfig } from './config.js';
 import { askJarvis } from './jarvis-agent.js';
 import { JarvisLimiter, type LimitResult } from './jarvis-limits.js';
+import { JarvisMemory, mergeHistories } from './jarvis-memory.js';
+import type { JarvisDiscordTools } from './jarvis-agent.js';
 import { parseJarvisTrigger } from './jarvis-trigger.js';
 import { OllamaError, createOllamaClient, type OllamaMessage } from './ollama.js';
 
@@ -82,9 +84,89 @@ export function limitText(result: Exclude<LimitResult, { kind: 'ok' }>): string 
   return 'Джарвіс зараз відповідає іншим, спробуй за хвилину.';
 }
 
+export interface ServerMessageLike {
+  id: string;
+  content?: string | null;
+  author?: { id?: string; username?: string } | null;
+}
+
+export interface ServerChannelLike {
+  id: string;
+  name?: string;
+  isTextBased(): boolean;
+  messages: { fetch(options: { limit: number }): Promise<Map<string, ServerMessageLike> | null> };
+}
+
+export interface ServerGuildLike {
+  id: string;
+  channels: { cache: Map<string, ServerChannelLike> };
+}
+
+const SEARCH_STOP_WORDS = new Set([
+  'знайди', 'знайти', 'шукай', 'шукати', 'покажи', 'показати', 'скажи', 'сказати',
+  'де', 'хто', 'що', 'який', 'яка', 'яке', 'які', 'якому', 'чи', 'чиї', 'чиє',
+  'як', 'коли', 'був', 'була', 'було', 'були', 'є', 'це', 'той', 'та', 'чи',
+  'писав', 'писала', 'писали', 'писати', 'про', 'на', 'в', 'у', 'з', 'із', 'та',
+  'чат', 'чаті', 'чатах', 'чатів', 'канал', 'каналі', 'каналів', 'сервер', 'сервері',
+  'повідомлення', 'повідомлень', 'тред', 'тут', 'там', 'мені', 'будь', 'ласка',
+]);
+
+/** Content words of a question: lowercased, stop-words and short words dropped. */
+export function extractKeywords(question: string): string[] {
+  const words = question.toLocaleLowerCase('uk-UA').split(/[^\p{L}\p{N}]+/gu);
+  return [...new Set(words.filter((word) => word.length >= 3 && !SEARCH_STOP_WORDS.has(word)))];
+}
+
+/** Searches recent messages across guild text channels. Current channel goes first; the asker's message and the bot's own messages are excluded. */
+export async function searchServerMessages(
+  guild: ServerGuildLike,
+  currentChannelId: string,
+  selfMessageId: string,
+  botId: string | undefined,
+  query: string,
+  perChannelLimit = 50,
+  maxChannels = 15,
+  maxHits = 10,
+): Promise<string> {
+  const keywords = extractKeywords(query);
+  if (keywords.length === 0) return 'error: empty query';
+  const all = [...guild.channels.cache.values()].filter((ch) => ch.isTextBased());
+  const ordered = [
+    ...all.filter((ch) => ch.id === currentChannelId),
+    ...all.filter((ch) => ch.id !== currentChannelId),
+  ].slice(0, Math.max(1, maxChannels));
+  const scored: Array<{ score: number; line: string }> = [];
+  for (const ch of ordered) {
+    const name = typeof ch.name === 'string' && ch.name ? ch.name : ch.id;
+    let messages: Map<string, ServerMessageLike> | null = null;
+    try {
+      messages = await ch.messages.fetch({ limit: perChannelLimit });
+    } catch {
+      console.warn(`Jarvis server search: cannot read channel ${ch.id}`);
+      continue;
+    }
+    if (!messages) continue;
+    for (const entry of [...messages.values()]) {
+      if (entry.id === selfMessageId) continue;
+      if (botId && entry.author?.id === botId) continue;
+      const text = (entry.content ?? '').toLocaleLowerCase('uk-UA');
+      const score = keywords.filter((word) => text.includes(word)).length;
+      if (score === 0) continue;
+      scored.push({
+        score,
+        line: `#${name}, ${entry.author?.username ?? '?'}: ${(entry.content ?? '').slice(0, 200)} — https://discord.com/channels/${guild.id}/${ch.id}/${entry.id}`,
+      });
+    }
+  }
+  scored.sort((a, b) => b.score - a.score);
+  const out = scored.slice(0, Math.max(1, maxHits)).map((hit) => hit.line).join('\n').slice(0, 4000);
+  return out || 'nothing found on this server';
+}
+
 export function createJarvis(config: JarvisConfig, client: Client, fetchImpl: typeof fetch = fetch): Jarvis {
   const ollama = createOllamaClient({ baseUrl: config.baseUrl, apiKeys: config.apiKeys, timeoutMs: config.timeoutMs, fetchImpl });
   const limiter = new JarvisLimiter(config.userCooldownMs, config.userDailyLimit, config.maxConcurrent);
+  const memory = new JarvisMemory(config.memoryMessages, config.memoryTtlMs);
   const answerIds: string[] = [];
 
   function rememberAnswer(id: string): void {
@@ -118,6 +200,52 @@ export function createJarvis(config: JarvisConfig, client: Client, fetchImpl: ty
     return history;
   }
 
+
+  function buildDiscordTools(message: Message<true>): JarvisDiscordTools {
+    async function fetchTextChannel(id: string) {
+      const guild = message.guild;
+      if (!guild) return null;
+      const channel = guild.channels.cache.get(id) ?? await guild.channels.fetch(id).catch(() => null);
+      if (!channel || !channel.isTextBased()) return null;
+      return channel;
+    }
+    return {
+      async readChannel(channelId: string, limit: number): Promise<string> {
+        const id = /<#(\d+)>/.exec(channelId)?.[1] ?? channelId.trim();
+        if (!/^\d+$/.test(id)) return 'error: bad channel id';
+        const channel = await fetchTextChannel(id);
+        if (!channel) return 'error: channel not found or not readable';
+        const messages = await channel.messages.fetch({ limit: Math.min(20, Math.max(1, limit)) }).catch(() => null);
+        if (!messages) return 'error: cannot read history (missing permission?)';
+        const guildId = message.guildId ?? message.guild?.id ?? '@me';
+        const lines = [...messages.values()]
+          .reverse()
+          .map((entry) => `${entry.author?.username ?? '?'}: ${entry.content ?? ''} — https://discord.com/channels/${guildId}/${channel.id}/${entry.id}`.slice(0, 500));
+        const text = lines.join('\n').slice(0, 4000);
+        return text || 'channel is empty';
+      },
+      async playMusic(query: string): Promise<string> {
+        const q = query.trim().slice(0, 200);
+        if (!q) return 'error: empty query';
+        const channel = await fetchTextChannel(config.musicChannelId);
+        if (!channel || !('send' in channel)) return 'error: music channel not found';
+        await channel.send(`m!play ${q}`);
+        return `sent "m!play ${q}" to the music channel; if the music bot stays silent, it ignores bot messages — give the command as text for the user to copy`;
+      },
+      async searchMessages(query: string): Promise<string> {
+        const guild = message.guild;
+        if (!guild) return 'error: no guild';
+        return searchServerMessages(
+          guild as unknown as ServerGuildLike,
+          message.channelId,
+          message.id,
+          client.user?.id,
+          query,
+        );
+      },
+    };
+  }
+
   return {
     async handle(message) {
       const replyTo = message.reference?.messageId;
@@ -146,12 +274,13 @@ export function createJarvis(config: JarvisConfig, client: Client, fetchImpl: ty
       void message.channel.sendTyping().catch(() => undefined);
       const typing = setInterval(() => void message.channel.sendTyping().catch(() => undefined), TYPING_INTERVAL_MS);
       try {
-        const [images, history] = await Promise.all([downloadImages(imageUrls), buildHistory(message)]);
+        const [images, threadHistory] = await Promise.all([downloadImages(imageUrls), buildHistory(message)]);
+        const history = mergeHistories(memory.recall(message.author.id), threadHistory, config.memoryMessages + HISTORY_LIMIT);
         if (!question.trim() && imageUrls.length > 0 && images.length === 0) {
           await message.reply({ content: 'Не вдалося завантажити зображення, надішли його ще раз.', allowedMentions: { parse: [], repliedUser: true } });
           return true;
         }
-        const answer = await askJarvis(ollama, config, { question, images, history, now: new Date() });
+        const answer = await askJarvis(ollama, config, { question, images, history, now: new Date() }, buildDiscordTools(message));
         const note = answer.imagesDropped ? '\n\n_(Зображення не враховано: основна модель зараз недоступна.)_' : '';
         const parts = splitForDiscord(`${answer.text}${note}`);
         const first = await message.reply({ content: parts[0] ?? '…', allowedMentions: { parse: [], repliedUser: true } });
@@ -160,6 +289,10 @@ export function createJarvis(config: JarvisConfig, client: Client, fetchImpl: ty
           const sent = await message.channel.send({ content: part, allowedMentions: { parse: [] } });
           rememberAnswer(sent.id);
         }
+        memory.remember(message.author.id, [
+          { role: 'user', content: question.trim() || '[зображення]' },
+          { role: 'assistant', content: answer.text },
+        ]);
         console.info(`Jarvis answered: model=${answer.model} fallback=${answer.usedFallback} tools=${answer.toolCalls} images=${images.length} tokens=${answer.promptTokens}/${answer.outputTokens} ms=${Date.now() - started}`);
       } catch (error) {
         const status = error instanceof OllamaError ? String(error.status ?? 'network') : 'internal';

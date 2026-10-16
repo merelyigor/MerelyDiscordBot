@@ -33,11 +33,17 @@ export function isJarvisWord(word: string): boolean {
   return JARVIS_NAMES.some((name) => editDistance(normalized, name) <= MAX_DISTANCE);
 }
 
-/** Question after the trigger word, '' for a bare trigger, null when the message does not start with the trigger. */
+/** Trigger word within the first words (a greeting like «йоу» may precede it). Returns the question after the trigger word, '' for a bare trigger, null when there is no trigger. Mentions deeper in the message do not trigger. */
+const MAX_LEADING_WORDS = 3;
 export function parseJarvisTrigger(content: string): string | null {
-  const match = /^\s*([^\s,.:;!?—–-]+)([\s\S]*)$/u.exec(content);
-  if (!match) return null;
-  const [, first = '', rest = ''] = match;
-  if (!isJarvisWord(first)) return null;
-  return rest.replace(/^[\s,.:;!?—–-]+/u, '').trim();
+  const wordPattern = /[^\s,.:;!?—–-]+/gu;
+  let index = 0;
+  for (let match = wordPattern.exec(content); match !== null; match = wordPattern.exec(content)) {
+    if (index >= MAX_LEADING_WORDS) return null;
+    if (isJarvisWord(match[0])) {
+      return content.slice(match.index + match[0].length).replace(/^[\s,.:;!?—–-]+/u, '').trim();
+    }
+    index += 1;
+  }
+  return null;
 }

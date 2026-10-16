@@ -11,6 +11,9 @@ export interface JarvisConfig {
   userDailyLimit: number;
   maxConcurrent: number;
   channelIds: string[];
+  memoryMessages: number;
+  memoryTtlMs: number;
+  musicChannelId: string;
 }
 
 export interface BotConfig {
@@ -71,6 +74,9 @@ export function loadJarvisConfig(env: NodeJS.ProcessEnv = process.env): JarvisCo
     userDailyLimit: intFromEnv(env, 'JARVIS_USER_DAILY_LIMIT', 40),
     maxConcurrent: Math.max(1, intFromEnv(env, 'JARVIS_MAX_CONCURRENT', 2)),
     channelIds: (env.JARVIS_CHANNEL_IDS ?? '').split(',').map((id) => id.trim()).filter(Boolean),
+    memoryMessages: Math.min(50, intFromEnv(env, 'JARVIS_MEMORY_MESSAGES', 20)),
+    memoryTtlMs: Math.max(1, intFromEnv(env, 'JARVIS_MEMORY_TTL_HOURS', 72)) * 3_600_000,
+    musicChannelId: env.MUSIC_CHANNEL_ID?.trim() || '697224336460873761',
   };
 }
 
