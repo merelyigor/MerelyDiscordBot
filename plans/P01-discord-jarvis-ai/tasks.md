@@ -1811,7 +1811,7 @@ review), and do not review your own change.
 
 #### Step 8.1 — Owner adds the Ollama key and enables Jarvis
 
-- **Status:** blocked
+- **Status:** done
 - **Depends on:** Step 7.1
 - **Files:** `www/MerelyDiscordBot/docker/.env.prod` (owner edits and commits)
 - **Why:** the key is a secret: only the owner writes it, and only the owner commits the line that carries it.
@@ -1840,10 +1840,11 @@ bash -c 'set -a; source www/MerelyDiscordBot/docker/.env.prod; curl -s -o /dev/n
 
 **Notes:**
 - 2026-10-16: ключі (5 шт) і `JARVIS_ENABLED=true` у `.env.prod` власник вписав, перевірки імен пройдено (`OLLAMA_API_KEY` непорожній ×1), АЛЕ файл незакомічен (`M www/MerelyDiscordBot/docker/.env.prod`): за планом рядок з ключем комітить лише власник. Чекаю коміт власника.
+- 2026-10-16: власник закомітив `.env.prod` в інфрі (Deploy Server Infra: v1.5.306): `grep -c OLLAMA_API_KEY` → 1, `JARVIS_ENABLED=true`, `git status` чисто. Крок закрито.
 
 #### Step 8.2 — Push the bot repository
 
-- **Status:** pending
+- **Status:** done
 - **Depends on:** Step 8.1
 - **Files:** none (git push)
 - **Why:** the deploy builds the bot from the `main` branch of the public repo.
@@ -1862,7 +1863,7 @@ bash -c 'set -a; source www/MerelyDiscordBot/docker/.env.prod; curl -s -o /dev/n
 **If it fails:** the pre-push gate failed — fix the cause in the scope of this plan with one new commit (never `--no-verify`) and retry once; otherwise `blocked`.
 
 **Notes:**
-- (none yet)
+- 2026-10-16: дозвіл «дозволяю коміти та пуші»; `git push origin main` rc=0, `rev-list @{u}..HEAD` → 0 (60191d6 на origin/main); Dependabot open alerts — порожньо.
 
 #### Step 8.3 — Push infra and watch the infra deploy
 
