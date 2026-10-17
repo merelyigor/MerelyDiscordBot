@@ -62,7 +62,7 @@
 
 ## Налаштування
 
-Базовий системний промпт — `JARVIS_PROMPT.md` у корені проєкту (плейсхолдери `{{TODAY}}`, `{{WEB_SEARCH_BLOCK}}` і `{{BOT_CAPABILITIES}}` підставляє код; обидва файли їдуть і в докер-образ). Можливості бота як довідка — `MERELYBOT_CAPABILITIES.md` поруч: правиться окремо, у промпт потрапляє через `{{BOT_CAPABILITIES}}`.
+Системний промпт — папка `JARVIS-PROMPTS/` у корені проєкту (їде і в докер-образ): `JARVIS_PROMPT.md` (база), `MERELYBOT_CAPABILITIES.md` (можливості бота, `{{BOT_CAPABILITIES}}`), `SERVER_LEGENDS.md` (легенди сервера: люди, хто чим займається — правиш сам, `{{SERVER_LEGENDS}}`). Плейсхолдери `{{TODAY}}`, `{{WEB_SEARCH_BLOCK}}`, `{{BOT_CAPABILITIES}}`, `{{SERVER_LEGENDS}}` підставляє код.
 
 Лише назви змінних (значення — в `../docker/.env.local` і
 `../docker/.env.prod`, див. [конфігурацію](CONFIGURATION.md)): `JARVIS_ENABLED`,

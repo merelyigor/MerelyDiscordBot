@@ -31,6 +31,7 @@ test('system prompt has no unreplaced placeholders and includes bot capabilities
   assert.ok(!prompt.includes('{{'), 'no {{PLACEHOLDER}} left in prompt');
   assert.match(prompt, /MerelyBot/);
   assert.match(prompt, /\/мотивація/);
+  assert.match(prompt, /Легенди цього Discord-сервера/);
 });
 
 test('gif rule tells the model to vary requests and not repeat gifs', () => {

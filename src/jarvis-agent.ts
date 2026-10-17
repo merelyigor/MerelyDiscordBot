@@ -211,9 +211,14 @@ let cachedPromptTemplate: string | null = null;
 
 /** Base prompt lives in JARVIS_PROMPT.md at the project root; bot capabilities live in
 MERELYBOT_CAPABILITIES.md next to it; code only fills the placeholders. */
+/** All Jarvis prompts live in JARVIS-PROMPTS/ at the project root; code only fills the placeholders. */
+function loadPromptFile(name: string): string {
+  return readFileSync(new URL(`../JARVIS-PROMPTS/${name}`, import.meta.url), 'utf8');
+}
+
 function loadPromptTemplate(): string {
   if (cachedPromptTemplate === null) {
-    cachedPromptTemplate = readFileSync(new URL('../JARVIS_PROMPT.md', import.meta.url), 'utf8');
+    cachedPromptTemplate = loadPromptFile('JARVIS_PROMPT.md');
   }
   return cachedPromptTemplate;
 }
@@ -222,16 +227,26 @@ let cachedCapabilities: string | null = null;
 
 function loadBotCapabilities(): string {
   if (cachedCapabilities === null) {
-    cachedCapabilities = readFileSync(new URL('../MERELYBOT_CAPABILITIES.md', import.meta.url), 'utf8');
+    cachedCapabilities = loadPromptFile('MERELYBOT_CAPABILITIES.md');
   }
   return cachedCapabilities;
+}
+
+let cachedLegends: string | null = null;
+
+function loadServerLegends(): string {
+  if (cachedLegends === null) {
+    cachedLegends = loadPromptFile('SERVER_LEGENDS.md');
+  }
+  return cachedLegends;
 }
 
 export function buildSystemPrompt(now: Date, webSearch: boolean): string {
   return loadPromptTemplate()
     .replaceAll('{{TODAY}}', now.toISOString().slice(0, 10))
     .replaceAll('{{WEB_SEARCH_BLOCK}}', webSearch ? WEB_SEARCH_ON : WEB_SEARCH_OFF)
-    .replaceAll('{{BOT_CAPABILITIES}}', loadBotCapabilities());
+    .replaceAll('{{BOT_CAPABILITIES}}', loadBotCapabilities())
+    .replaceAll('{{SERVER_LEGENDS}}', loadServerLegends());
 }
 
 function clampResults(value: unknown): number {
